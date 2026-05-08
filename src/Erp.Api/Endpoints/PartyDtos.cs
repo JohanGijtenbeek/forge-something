@@ -6,6 +6,14 @@ namespace Erp.Api.Endpoints;
 // RESPONSES
 // ============================================================
 
+public record PagedResult<T>(
+    IEnumerable<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
 public record PartyListResponse(
     Guid Id,
     string Name,

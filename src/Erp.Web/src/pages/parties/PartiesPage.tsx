@@ -3,15 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useParties, useDeactivateParty } from '../../hooks/useParties';
 import type { PartyListResponse } from '../../types/api';
 
+const PAGE_SIZE = 25;
+
 export default function PartiesPage() {
   const navigate = useNavigate();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  const { data: parties, isLoading, isError } = useParties(includeInactive);
-  const deactivate = useDeactivateParty();
+  const { data, isLoading, isError } = useParties({ page, pageSize: PAGE_SIZE, includeInactive });
 
-  const filtered = parties?.filter((p) =>
+  const filtered = data?.items.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.city?.toLowerCase().includes(search.toLowerCase())
   );
@@ -21,8 +23,18 @@ export default function PartiesPage() {
     await deactivate.mutateAsync(party.id);
   };
 
+  const deactivate = useDeactivateParty();
+
+  const handleIncludeInactiveChange = (value: boolean) => {
+    setIncludeInactive(value);
+    setPage(1);
+  };
+
   if (isLoading) return <div className="text-sm text-gray-500">Laden...</div>;
   if (isError) return <div className="text-sm text-red-500">Fout bij ophalen van relaties.</div>;
+
+  const totalPages = data?.totalPages ?? 1;
+  const totalCount = data?.totalCount ?? 0;
 
   return (
     <div className="space-y-4">
@@ -30,7 +42,7 @@ export default function PartiesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Relaties</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered?.length ?? 0} resultaten</p>
+          <p className="text-sm text-gray-500 mt-0.5">{totalCount} resultaten</p>
         </div>
         <div className="flex gap-2">
           <Link
@@ -61,7 +73,7 @@ export default function PartiesPage() {
           <input
             type="checkbox"
             checked={includeInactive}
-            onChange={(e) => setIncludeInactive(e.target.checked)}
+            onChange={(e) => handleIncludeInactiveChange(e.target.checked)}
             className="rounded"
           />
           Inclusief inactief
@@ -130,6 +142,31 @@ export default function PartiesPage() {
         {filtered?.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-500">
             Geen relaties gevonden.
+          </div>
+        )}
+
+        {/* Paginatie */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <p className="text-sm text-gray-500">
+              Pagina {page} van {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Vorige
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Volgende
+              </button>
+            </div>
           </div>
         )}
       </div>
