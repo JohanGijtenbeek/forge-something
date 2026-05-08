@@ -60,6 +60,24 @@ public class PartyRepository : IPartyRepository
         return rows.Select(r => r.ToDomain(null, null, null, null, [], [], [])).ToList();
     }
 
+    public async Task<(IReadOnlyList<Party> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, bool includeInactive = false, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        using var multi = await conn.QueryMultipleAsync(@"
+            SELECT COUNT(*) FROM mdata.parties
+            WHERE @IncludeInactive = 1 OR is_active = 1;
+
+            SELECT * FROM mdata.parties
+            WHERE @IncludeInactive = 1 OR is_active = 1
+            ORDER BY name
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;",
+            new { IncludeInactive = includeInactive ? 1 : 0, Offset = (page - 1) * pageSize, PageSize = pageSize });
+
+        var totalCount = await multi.ReadSingleAsync<int>();
+        var rows = await multi.ReadAsync<PartyRow>();
+        return (rows.Select(r => r.ToDomain(null, null, null, null, [], [], [])).ToList(), totalCount);
+    }
+
     public async Task<IReadOnlyList<Party>> GetCustomersAsync(bool includeInactive = false, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

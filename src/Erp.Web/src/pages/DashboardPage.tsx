@@ -6,7 +6,7 @@ export default function DashboardPage() {
   const { data: suppliers } = useSuppliers();
 
   const stats = [
-    { label: 'Relaties', value: parties?.length ?? '—' },
+    { label: 'Relaties', value: parties?.totalCount ?? '—' },
     { label: 'Klanten', value: customers?.length ?? '—' },
     { label: 'Leveranciers', value: suppliers?.length ?? '—' },
   ];

@@ -14,13 +14,16 @@ public static class PartyEndpoints
             .RequireRateLimiting("sliding")
             .RequireRateLimiting("concurrency");
 
-        group.MapGet("/", async Task<Ok<IEnumerable<PartyListResponse>>> (
-                IPartyRepository repo, bool includeInactive = false, CancellationToken ct = default) =>
+        group.MapGet("/", async Task<Ok<PagedResult<PartyListResponse>>> (
+                IPartyRepository repo, int page = 1, int pageSize = 25, bool includeInactive = false, CancellationToken ct = default) =>
             {
-                var parties = await repo.GetAllAsync(includeInactive, ct);
-                return TypedResults.Ok(parties.Select(PartyMapper.ToListResponse));
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 100);
+                var (items, totalCount) = await repo.GetPagedAsync(page, pageSize, includeInactive, ct);
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+                return TypedResults.Ok(new PagedResult<PartyListResponse>(items.Select(PartyMapper.ToListResponse), totalCount, page, pageSize, totalPages));
             })
-            .WithName("GetParties").WithSummary("Alle parties ophalen");
+            .WithName("GetParties").WithSummary("Alle parties ophalen (gepagineerd)");
 
         group.MapGet("/customers", async Task<Ok<IEnumerable<PartyListResponse>>> (
                 IPartyRepository repo, bool includeInactive = false, CancellationToken ct = default) =>

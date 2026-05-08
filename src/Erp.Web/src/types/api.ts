@@ -80,6 +80,14 @@ export interface BankAccountResponse {
   isPrimary: boolean;
 }
 
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface SearchResult {
   id: string;
   entityType: string;
