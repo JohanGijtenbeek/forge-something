@@ -1,0 +1,167 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // ============================================================
+    // DOCKER
+    // ============================================================
+    {
+      "label": "Docker: restart low",
+      "type": "shell",
+      "command": "docker compose --profile low down -v; docker compose --profile low up -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Docker: restart medium",
+      "type": "shell",
+      "command": "docker compose --profile medium down -v; docker compose --profile medium up -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Docker: restart high",
+      "type": "shell",
+      "command": "docker compose --profile high down -v; docker compose --profile high up -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Docker: stop",
+      "type": "shell",
+      "command": "docker compose --profile low down; docker compose --profile medium down; docker compose --profile high down",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+
+    // ============================================================
+    // API
+    // ============================================================
+    {
+      "label": "API: watch",
+      "type": "shell",
+      "command": "dotnet watch",
+      "options": { "cwd": "${workspaceFolder}/src/Erp.Api" },
+      "isBackground": true,
+      "problemMatcher": "$msCompile",
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "API: build",
+      "type": "shell",
+      "command": "dotnet build ${workspaceFolder}/src/Erp.Api/Erp.Api.csproj -c Debug",
+      "group": "build",
+      "problemMatcher": ["$msCompile"],
+      "presentation": { "panel": "dedicated" }
+    },
+
+    // ============================================================
+    // FRONTEND
+    // ============================================================
+    {
+      "label": "Frontend: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/src/Erp.Web" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+
+    // ============================================================
+    // BROWSER
+    // ============================================================
+    {
+      "label": "Dev: open browser tabs",
+      "type": "shell",
+      "command": "Start-Sleep 5; Start-Process 'http://localhost:5173'; Start-Process 'http://localhost:5272/scalar'; Start-Process 'http://localhost:7700'",
+      "options": {
+        "shell": { "executable": "powershell", "args": ["-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "never" }
+    },
+
+    // ============================================================
+    // K6
+    // ============================================================
+    {
+      "label": "k6: smoke",
+      "type": "shell",
+      "command": "k6 run tests/smoke.js",
+      "options": { "cwd": "${workspaceFolder}/k6" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "k6: load",
+      "type": "shell",
+      "command": "k6 run tests/load.js --out \"web-dashboard=period=500ms\"",
+      "options": { "cwd": "${workspaceFolder}/k6" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "k6: stress",
+      "type": "shell",
+      "command": "k6 run tests/stress.js --out \"web-dashboard=period=500ms\"",
+      "options": { "cwd": "${workspaceFolder}/k6" },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    // ============================================================
+    // SEEDER
+    // ============================================================
+    {
+      "label": "Seeder: low",
+      "type": "shell",
+      "command": "dotnet run --project ${workspaceFolder}/src/Erp.Seeder/Erp.Seeder.csproj -- low",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Seeder: medium",
+      "type": "shell",
+      "command": "dotnet run --project ${workspaceFolder}/src/Erp.Seeder/Erp.Seeder.csproj -- medium",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Seeder: high",
+      "type": "shell",
+      "command": "dotnet run --project ${workspaceFolder}/src/Erp.Seeder/Erp.Seeder.csproj -- high",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated" }
+    },
+    // ============================================================
+    // COMPOUND TASKS
+    // ============================================================
+    {
+      "label": "Dev: start infrastructure (low)",
+      "dependsOn": ["Docker: restart low"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: start infrastructure (medium)",
+      "dependsOn": ["Docker: restart medium"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: start infrastructure (high)",
+      "dependsOn": ["Docker: restart high"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: start services",
+      "dependsOn": ["API: watch", "Frontend: dev", "Dev: open browser tabs"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

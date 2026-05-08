@@ -1,0 +1,112 @@
+services:
+
+  # ============================================================
+  # Meilisearch - alle profielen
+  # ============================================================
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: erp-meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_ENV=development
+    volumes:
+      - meilisearch_data:/meili_data
+    profiles: [low, medium, high]
+
+  # ============================================================
+  # SQL Server - Low load
+  # SQL seed via init.sh
+  # Poort 1433
+  # ============================================================
+  sqlserver-low:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: erp-sqlserver-low
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=StrongPassword123!
+      - MSSQL_MEMORY_LIMIT_MB=512
+      - SEED_PROFILE=low
+    volumes:
+      - sqlserver_low_data:/var/opt/mssql
+      - ./docker/sqlserver:/docker-entrypoint-initdb.d
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/mssql/bin/sqlservr &
+        /docker-entrypoint-initdb.d/init.sh
+        wait
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    profiles: [low]
+
+  # ============================================================
+  # SQL Server - Medium load
+  # Bogus seeder vult de data
+  # Poort 1434
+  # ============================================================
+  sqlserver-medium:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: erp-sqlserver-medium
+    ports:
+      - "1434:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=StrongPassword123!
+      - MSSQL_MEMORY_LIMIT_MB=1024
+    volumes:
+      - sqlserver_medium_data:/var/opt/mssql
+      - ./docker/sqlserver:/docker-entrypoint-initdb.d
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/mssql/bin/sqlservr &
+        /docker-entrypoint-initdb.d/init.sh
+        wait
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+    profiles: [medium]
+
+  # ============================================================
+  # SQL Server - High load
+  # Bogus seeder vult de data
+  # Poort 1435
+  # ============================================================
+  sqlserver-high:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: erp-sqlserver-high
+    ports:
+      - "1435:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=StrongPassword123!
+      - MSSQL_MEMORY_LIMIT_MB=2048
+    volumes:
+      - sqlserver_high_data:/var/opt/mssql
+      - ./docker/sqlserver:/docker-entrypoint-initdb.d
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/mssql/bin/sqlservr &
+        /docker-entrypoint-initdb.d/init.sh
+        wait
+    deploy:
+      resources:
+        limits:
+          memory: 2560m
+    profiles: [high]
+
+volumes:
+  meilisearch_data:
+  sqlserver_low_data:
+  sqlserver_medium_data:
+  sqlserver_high_data:

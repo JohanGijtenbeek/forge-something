@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Erp.Api (no watch)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: Erp.Api Debug",
+      "program": "${workspaceFolder}/src/Erp.Api/bin/Debug/net8.0/Erp.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Erp.Api",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "justMyCode": false,
+      "suppressJITOptimizations": true,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": true
+      }
+    },
+    {
+      "name": "Attach to Erp.Api (dotnet watch)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "preLaunchTask": "watch: Erp.Api http",
+      "justMyCode": false,
+      "suppressJITOptimizations": true,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": true
+      }
+    }
+  ]
+}

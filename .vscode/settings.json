@@ -1,0 +1,10 @@
+{
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.iconTheme": "material-icon-theme",
+  "editor.semanticHighlighting.enabled": true,
+  "editor.formatOnSave": true,
+  "[csharp]": {
+    "editor.defaultFormatter": "jetbrains.resharper-code",
+    "editor.formatOnSave": true
+  }
+}

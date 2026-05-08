@@ -1,0 +1,95 @@
+using Erp.Seeder.Generators;
+using Erp.Seeder.Writers;
+using Microsoft.Extensions.Configuration;
+using Erp.Seeder.Models;
+
+var config = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .AddEnvironmentVariables()
+    .Build();
+
+var profile = args.FirstOrDefault() ?? "low";
+var connectionString = config.GetConnectionString(profile)
+                       ?? config.GetConnectionString("low")!;
+var meilisearchUrl = config["Meilisearch:Url"] ?? "http://localhost:7700";
+var meilisearchKey = config["Meilisearch:ApiKey"];
+var seed = config.GetValue<int>("Seeder:Seed", 42);
+
+var orgCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Organizations", 50);
+var personCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Persons", 50);
+
+Console.WriteLine($"""
+                   ════════════════════════════════════════
+                     ERP Seeder
+                     Profiel:       {profile}
+                     Organisaties:  {orgCount}
+                     Personen:      {personCount}
+                     Seed:          {seed}
+                   ════════════════════════════════════════
+                   """);
+
+var generator = new PartyGenerator(seed);
+var dbWriter = new DatabaseWriter(connectionString);
+var msWriter = new MeilisearchWriter(meilisearchUrl, meilisearchKey);
+
+var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+// Genereer data
+Console.WriteLine("Genereren...");
+
+var organizations = new List<GeneratedParty>();
+for (var i = 0; i < orgCount; i++)
+{
+    organizations.Add(generator.GenerateOrganization());
+    Console.Write($"\r  {i + 1}/{orgCount} organisaties gegenereerd...");
+}
+
+Console.WriteLine();
+
+var persons = new List<GeneratedParty>();
+for (var i = 0; i < personCount; i++)
+{
+    persons.Add(generator.GeneratePerson());
+    Console.Write($"\r  {i + 1}/{personCount} personen gegenereerd...");
+}
+
+Console.WriteLine();
+
+var allParties = organizations.Concat(persons).ToList();
+
+var orgIds = organizations.Select(o => o.Party.Id).ToList();
+var personIds = persons.Select(p => p.Party.Id).ToList();
+var relationships = generator.GenerateRelationships(orgIds, personIds);
+
+Console.WriteLine($"  ✓ {allParties.Count} parties gegenereerd in {stopwatch.ElapsedMilliseconds}ms");
+
+// Schrijf naar database
+Console.WriteLine("\nDatabase...");
+await dbWriter.ClearAsync();
+await dbWriter.WriteAsync(allParties, relationships);
+
+// Schrijf naar Meilisearch
+Console.WriteLine("\nMeilisearch...");
+await msWriter.ClearAsync();
+await msWriter.WriteAsync(allParties);
+
+stopwatch.Stop();
+
+var customers = organizations.Count(o => o.CustomerRole != null);
+var suppliers = organizations.Count(o => o.SupplierRole != null);
+var both = organizations.Count(o => o.CustomerRole != null && o.SupplierRole != null);
+var inactive = allParties.Count(p => !p.Party.IsActive);
+
+Console.WriteLine($"""
+
+                   ════════════════════════════════════════
+                     Klaar in {stopwatch.ElapsedMilliseconds}ms
+                     Totaal parties:   {allParties.Count}
+                     Klanten:          {customers}
+                     Leveranciers:     {suppliers}
+                     Beide:            {both}
+                     Inactief:         {inactive}
+                     Relaties:         {relationships.Count}
+                   ════════════════════════════════════════
+                   """);

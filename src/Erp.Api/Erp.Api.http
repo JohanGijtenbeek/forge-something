@@ -1,0 +1,77 @@
+@baseUrl = http://localhost:5272
+
+### Alle parties
+GET {{baseUrl}}/api/parties
+
+### Alle parties inclusief inactief
+GET {{baseUrl}}/api/parties?includeInactive=true
+
+### Alleen klanten
+GET {{baseUrl}}/api/parties/customers
+
+### Alleen leveranciers
+GET {{baseUrl}}/api/parties/suppliers
+
+### Party detail (vervang id)
+GET {{baseUrl}}/api/parties/00000000-0000-0000-0000-000000000000
+
+### Organisatie aanmaken
+POST {{baseUrl}}/api/parties/organizations
+Content-Type: application/json
+
+{
+  "name": "Nieuw Bedrijf B.V.",
+  "vatNumber": "NL123456789B01",
+  "chamberOfCommerceNumber": "12345678",
+  "registerAsCustomer": true,
+  "registerAsSupplier": false
+}
+
+### Persoon aanmaken
+POST {{baseUrl}}/api/parties/persons
+Content-Type: application/json
+
+{
+  "firstName": "Jan",
+  "middleName": "de",
+  "lastName": "Vries",
+  "initials": "J."
+}
+
+### Party deactiveren (vervang id)
+DELETE {{baseUrl}}/api/parties/00000000-0000-0000-0000-000000000000
+
+### Global search
+GET {{baseUrl}}/api/search?q=bout
+
+### Search met typo
+GET {{baseUrl}}/api/search?q=buot
+
+
+
+
+### Alle parties ophalen
+GET http://localhost:5272/api/parties
+
+### Organisatie aanmaken
+POST http://localhost:5272/api/parties/organizations
+Content-Type: application/json
+
+{
+  "name": "Test Bedrijf B.V.",
+  "vatNumber": "NL123456789B01",
+  "chamberOfCommerceNumber": "12345678",
+  "registerAsCustomer": true,
+  "registerAsSupplier": false
+}
+
+### Klanten ophalen
+GET http://localhost:5272/api/parties/customers
+
+### Leveranciers ophalen
+GET http://localhost:5272/api/parties/suppliers
+
+### Meilisearch index opnieuw opbouwen
+POST http://localhost:5272/api/search/reindex
+
+GET http://localhost:5272/health
