@@ -105,8 +105,26 @@ services:
           memory: 2560m
     profiles: [high]
 
+  # ============================================================
+  # RabbitMQ - alle profielen
+  # Management UI: http://localhost:15672 (erp / erp_password)
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: erp-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=erp
+      - RABBITMQ_DEFAULT_PASS=erp_password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    profiles: [low, medium, high]
+
 volumes:
   meilisearch_data:
   sqlserver_low_data:
   sqlserver_medium_data:
   sqlserver_high_data:
+  rabbitmq_data:
