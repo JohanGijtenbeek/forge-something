@@ -141,3 +141,16 @@ public class UpdatePersonHandler : IRequestHandler<UpdatePersonCommand>
             party.Id, party.Name, DateTime.UtcNow), ct);
     }
 }
+
+public class AddPartyRelationshipHandler : IRequestHandler<AddPartyRelationshipCommand>
+{
+    private readonly IPartyRepository _repository;
+
+    public AddPartyRelationshipHandler(IPartyRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task Handle(AddPartyRelationshipCommand command, CancellationToken ct)
+        => await _repository.AddRelationshipAsync(command.FromPartyId, command.ToPartyId, command.RelationshipTypeId, ct);
+}

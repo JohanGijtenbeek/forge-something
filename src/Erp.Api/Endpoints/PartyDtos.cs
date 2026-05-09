@@ -182,6 +182,8 @@ public static class PartyMapper
     );
 }
 
+public record AddRelationshipRequest(Guid ToPartyId, int RelationshipTypeId);
+
 // Update requests
 public record UpdateOrganizationRequest(
     string Name,
