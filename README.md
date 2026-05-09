@@ -79,7 +79,7 @@ Use **Terminal → Run Task** for all of the above:
 | Health check | http://localhost:5272/health |
 | Event Consumer (SignalR) | http://localhost:5002 |
 | Meilisearch | http://localhost:7700 |
-| RabbitMQ management | http://localhost:15672 — user: `erp`, password: `erp_password` |
+| RabbitMQ management | http://localhost:15672 — user: `guest`, password: `guest` |
 | SQL Server | localhost,1433 — user: `sa`, password: `StrongPassword123!` |
 
 ## Solution structure
