@@ -7,6 +7,7 @@ import SuppliersPage from './pages/parties/SuppliersPage';
 import PartyDetailPage from './pages/parties/PartyDetailPage';
 import CreateOrganizationPage from './pages/parties/CreateOrganizationPage';
 import CreatePersonPage from './pages/parties/CreatePersonPage';
+import EventViewerPage from './pages/EventViewerPage';
 
 const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: 'parties/new/organization', element: <CreateOrganizationPage /> },
       { path: 'parties/new/person', element: <CreatePersonPage /> },
       { path: 'parties/:id', element: <PartyDetailPage /> },
+      { path: 'events', element: <EventViewerPage /> },
     ],
   },
 ]);
