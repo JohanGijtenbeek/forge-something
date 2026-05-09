@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { partyApi, searchApi } from '../api/parties';
+import type { PartiesParams } from '../api/parties';
 import type { CreateOrganizationRequest, CreatePersonRequest, UpdateOrganizationRequest, UpdatePersonRequest } from '../types/api';
 
 export const partyKeys = {
@@ -16,8 +17,8 @@ export const searchKeys = {
   search: (q: string) => ['search', q] as const,
 };
 
-export const useParties = (includeInactive = false) =>
-  useQuery({ queryKey: partyKeys.list({ includeInactive }), queryFn: () => partyApi.getAll(includeInactive) });
+export const useParties = (params: PartiesParams = {}) =>
+  useQuery({ queryKey: partyKeys.list(params), queryFn: () => partyApi.getAll(params) });
 
 export const useCustomers = (includeInactive = false) =>
   useQuery({ queryKey: partyKeys.customers(includeInactive), queryFn: () => partyApi.getCustomers(includeInactive) });

@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type {
   PartyListResponse,
   PartyDetailResponse,
+  PagedResult,
   CreateOrganizationRequest,
   CreatePersonRequest,
   UpdateOrganizationRequest,
@@ -10,9 +11,15 @@ import type {
   SearchResult,
 } from '../types/api';
 
+export interface PartiesParams {
+  page?: number;
+  pageSize?: number;
+  includeInactive?: boolean;
+}
+
 export const partyApi = {
-  getAll: (includeInactive = false) =>
-    apiClient.get<PartyListResponse[]>('/api/parties', { params: { includeInactive } }).then(r => r.data),
+  getAll: (params: PartiesParams = {}) =>
+    apiClient.get<PagedResult<PartyListResponse>>('/api/parties', { params }).then(r => r.data),
 
   getCustomers: (includeInactive = false) =>
     apiClient.get<PartyListResponse[]>('/api/parties/customers', { params: { includeInactive } }).then(r => r.data),
