@@ -12,6 +12,7 @@ public class MeilisearchService : ISearchService
     private readonly ILogger<MeilisearchService> _logger;
 
     private const string PartiesIndex = "parties";
+    private const string ArticlesIndex = "articles";
 
     public MeilisearchService(IConfiguration config, ILogger<MeilisearchService> logger)
     {
@@ -26,6 +27,7 @@ public class MeilisearchService : ISearchService
     public async Task InitializeAsync()
     {
         await EnsureIndexAsync(PartiesIndex, "id", ["name", "city", "email", "phone"]);
+        await EnsureIndexAsync(ArticlesIndex, "id", ["code", "name", "category"]);
     }
 
     public async Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default)
@@ -95,17 +97,22 @@ public class MeilisearchService : ISearchService
         {
             var index = _client.Index(PartiesIndex);
             var hits = await index.SearchAsync<PartySearchDocument>(query, new SearchQuery { Limit = limit });
-
-            results.AddRange(hits.Hits.Select(p => new SearchResult(
-                p.Id,
-                p.EntityType,
-                p.DisplayLabel,
-                p.City
-            )));
+            results.AddRange(hits.Hits.Select(p => new SearchResult(p.Id, p.EntityType, p.DisplayLabel, p.City)));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Zoeken mislukt in '{Index}'", PartiesIndex);
+        }
+
+        try
+        {
+            var index = _client.Index(ArticlesIndex);
+            var hits = await index.SearchAsync<ArticleSearchDocument>(query, new SearchQuery { Limit = limit });
+            results.AddRange(hits.Hits.Select(a => new SearchResult(a.Id, a.EntityType, a.DisplayLabel, a.Category)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Zoeken mislukt in '{Index}'", ArticlesIndex);
         }
 
         return results;
@@ -136,6 +143,34 @@ public class MeilisearchService : ISearchService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Verwijderen mislukt voor party '{Id}'", id);
+        }
+    }
+
+    public async Task IndexArticleAsync(ArticleSearchDocument document)
+    {
+        try
+        {
+            var index = _client.Index(ArticlesIndex);
+            var task = await index.AddDocumentsAsync(new[] { document });
+            _logger.LogInformation("Article '{Id}' geïndexeerd (taskUid={Uid})", document.Id, task.TaskUid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Indexeren mislukt voor article '{Id}'", document.Id);
+        }
+    }
+
+    public async Task DeleteArticleAsync(string id)
+    {
+        try
+        {
+            var index = _client.Index(ArticlesIndex);
+            await index.DeleteOneDocumentAsync(id);
+            _logger.LogInformation("Article '{Id}' verwijderd uit index", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Verwijderen mislukt voor article '{Id}'", id);
         }
     }
 }

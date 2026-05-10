@@ -1,4 +1,5 @@
 using Erp.Seeder.Generators;
+using Erp.Seeder.Models;
 using Erp.Seeder.Writers;
 using Microsoft.Extensions.Configuration;
 
@@ -18,6 +19,7 @@ var seed = config.GetValue<int>("Seeder:Seed", 42);
 
 var orgCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Organizations", 50);
 var personCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Persons", 50);
+var articleCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Articles", 10);
 
 Console.WriteLine($"""
                    ════════════════════════════════════════
@@ -25,12 +27,14 @@ Console.WriteLine($"""
                      Profiel:       {profile}
                      Organisaties:  {orgCount}
                      Personen:      {personCount}
+                     Artikelen:     {articleCount}
                      Seed:          {seed}
                      API:           {apiUrl}
                    ════════════════════════════════════════
                    """);
 
 var generator = new PartyGenerator(seed);
+var articleGenerator = new ArticleGenerator(seed);
 var dbWriter = new DatabaseWriter(connectionString);
 var msWriter = new MeilisearchWriter(meilisearchUrl, meilisearchKey);
 var apiWriter = new ApiWriter(apiUrl, generator);
@@ -58,14 +62,24 @@ Console.WriteLine();
 
 Console.WriteLine($"  ✓ {organizations.Count + persons.Count} parties gegenereerd in {stopwatch.ElapsedMilliseconds}ms");
 
+var articles = articleGenerator.Generate(articleCount);
+
+Console.WriteLine($"  ✓ {organizations.Count + persons.Count} parties + {articles.Count} artikelen gegenereerd in {stopwatch.ElapsedMilliseconds}ms");
+
 // Leegmaken
 Console.WriteLine("\nLeegmaken...");
 await dbWriter.ClearAsync();
 await msWriter.ClearAsync();
 
-// Schrijven via API-pipeline
+// Schrijven parties via API-pipeline (publishes events → EventConsumer → Meilisearch)
 Console.WriteLine("\nAPI...");
 var (parties, relationships, errors) = await apiWriter.WriteAsync(organizations, persons);
+
+// Schrijven artikelen direct naar database + Meilisearch
+Console.WriteLine("\nArtikelen...");
+await dbWriter.WriteArticlesAsync(articles);
+var categoryNames = ArticleGenerator.Categories.ToDictionary(c => c.Id, c => c.Name);
+await msWriter.WriteArticlesAsync(articles, categoryNames);
 
 stopwatch.Stop();
 
@@ -82,6 +96,7 @@ Console.WriteLine($"""
                      Leveranciers:     {suppliers}
                      Beide:            {both}
                      Relaties:         {relationships}
+                     Artikelen:        {articles.Count}
                      Fouten:           {errors}
                    ════════════════════════════════════════
                    """);
