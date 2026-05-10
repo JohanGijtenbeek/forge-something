@@ -152,5 +152,12 @@ public class AddPartyRelationshipHandler : IRequestHandler<AddPartyRelationshipC
     }
 
     public async Task Handle(AddPartyRelationshipCommand command, CancellationToken ct)
-        => await _repository.AddRelationshipAsync(command.FromPartyId, command.ToPartyId, command.RelationshipTypeId, ct);
+    {
+        _ = await _repository.GetByIdAsync(command.FromPartyId, ct)
+            ?? throw new KeyNotFoundException($"Party {command.FromPartyId} niet gevonden.");
+        _ = await _repository.GetByIdAsync(command.ToPartyId, ct)
+            ?? throw new KeyNotFoundException($"Party {command.ToPartyId} niet gevonden.");
+
+        await _repository.AddRelationshipAsync(command.FromPartyId, command.ToPartyId, command.RelationshipTypeId, ct);
+    }
 }

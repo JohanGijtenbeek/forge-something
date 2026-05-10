@@ -289,18 +289,29 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'event_log')
 BEGIN
     CREATE TABLE audit.event_log (
-        id              BIGINT          NOT NULL IDENTITY(1,1),
-        aggregate_id    UNIQUEIDENTIFIER NOT NULL,
-        aggregate_type  NVARCHAR(100)   NOT NULL,
-        event_type      NVARCHAR(200)   NOT NULL,
-        payload         NVARCHAR(MAX)   NOT NULL,
-        occurred_at     DATETIME2       NOT NULL,
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        aggregate_id    UNIQUEIDENTIFIER    NOT NULL,
+        aggregate_type  NVARCHAR(100)       NOT NULL,
+        event_type      NVARCHAR(200)       NOT NULL,
+        payload         NVARCHAR(MAX)       NOT NULL,
+        occurred_at     DATETIME2           NOT NULL,
+        message_id      UNIQUEIDENTIFIER    NULL,
         CONSTRAINT pk_event_log PRIMARY KEY (id)
     );
 
     CREATE INDEX ix_event_log_aggregate ON audit.event_log (aggregate_id, aggregate_type);
     CREATE INDEX ix_event_log_occurred_at ON audit.event_log (occurred_at);
+    CREATE UNIQUE INDEX uix_event_log_message_id ON audit.event_log (message_id) WHERE message_id IS NOT NULL;
 END
+GO
+
+-- Migration: add message_id to existing event_log tables
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('audit.event_log') AND name = 'message_id')
+    ALTER TABLE audit.event_log ADD message_id UNIQUEIDENTIFIER NULL;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'uix_event_log_message_id' AND object_id = OBJECT_ID('audit.event_log'))
+    CREATE UNIQUE INDEX uix_event_log_message_id ON audit.event_log (message_id) WHERE message_id IS NOT NULL;
 GO
 
 -- ============================================================

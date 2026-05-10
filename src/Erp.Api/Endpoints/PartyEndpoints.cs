@@ -133,7 +133,7 @@ public static class PartyEndpoints
                 {
                     return TypedResults.NotFound();
                 }
-                catch (Exception ex) when (ex.Message.Contains("UNIQUE") || ex.Message.Contains("duplicate"))
+                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
                 {
                     return TypedResults.Conflict();
                 }

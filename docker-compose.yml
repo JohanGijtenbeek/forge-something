@@ -107,7 +107,7 @@ services:
 
   # ============================================================
   # RabbitMQ - alle profielen
-  # Management UI: http://localhost:15672 (erp / erp_password)
+  # Management UI: http://localhost:15672 (guest / guest)
   # ============================================================
   rabbitmq:
     image: rabbitmq:3.13-management

@@ -29,46 +29,59 @@ public class PartyDeactivatedConsumer : IConsumer<PartyDeactivatedEvent>
 
         using var conn = _factory.Create();
 
-        await conn.ExecuteAsync(@"
-            INSERT INTO audit.event_log (aggregate_id, aggregate_type, event_type, payload, occurred_at)
-            VALUES (@AggregateId, @AggregateType, @EventType, @Payload, @OccurredAt)",
-            new
+        using (var tx = await conn.BeginTransactionAsync(ct))
+        {
+            try
             {
-                AggregateId = e.PartyId,
-                AggregateType = "Party",
-                EventType = "PartyDeactivated",
-                Payload = JsonSerializer.Serialize(e),
-                OccurredAt = e.OccurredAt
-            });
+                var eventId = await conn.QuerySingleAsync<long>(@"
+                    INSERT INTO audit.event_log (aggregate_id, aggregate_type, event_type, payload, occurred_at, message_id)
+                    OUTPUT INSERTED.id
+                    VALUES (@AggregateId, @AggregateType, @EventType, @Payload, @OccurredAt, @MessageId)",
+                    new
+                    {
+                        AggregateId = e.PartyId,
+                        AggregateType = "Party",
+                        EventType = "PartyDeactivated",
+                        Payload = JsonSerializer.Serialize(e),
+                        OccurredAt = e.OccurredAt,
+                        context.MessageId
+                    }, tx);
 
-        var eventId = await conn.QuerySingleAsync<long>(@"
-            SELECT TOP 1 id FROM audit.event_log
-            WHERE aggregate_id = @PartyId AND event_type = 'PartyDeactivated'
-            ORDER BY id DESC",
-            new { e.PartyId });
+                var snapshot = JsonSerializer.Serialize(e);
 
-        var snapshot = JsonSerializer.Serialize(e);
+                await conn.ExecuteAsync(@"
+                    INSERT INTO audit.party_history
+                        (party_id, event_sequence, event_type, summary, changed_by, changed_at, snapshot)
+                    VALUES
+                        (@PartyId, @EventSequence, @EventType, @Summary, @ChangedBy, @ChangedAt, @Snapshot)",
+                    new
+                    {
+                        e.PartyId,
+                        EventSequence = eventId,
+                        EventType = "PartyDeactivated",
+                        Summary = $"Party gedeactiveerd: {e.Name}",
+                        ChangedBy = "system",
+                        ChangedAt = e.OccurredAt,
+                        Snapshot = snapshot
+                    }, tx);
 
-        await conn.ExecuteAsync(@"
-            INSERT INTO audit.party_history
-                (party_id, event_sequence, event_type, summary, changed_by, changed_at, snapshot)
-            VALUES
-                (@PartyId, @EventSequence, @EventType, @Summary, @ChangedBy, @ChangedAt, @Snapshot)",
-            new
+                await conn.ExecuteAsync(@"
+                    INSERT INTO audit.party_snapshots (party_id, at_event_id, snapshot, trigger_reason)
+                    VALUES (@PartyId, @AtEventId, @Snapshot, @TriggerReason)",
+                    new { PartyId = e.PartyId, AtEventId = eventId, Snapshot = snapshot, TriggerReason = "state_closed" }, tx);
+
+                await tx.CommitAsync(ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
             {
-                e.PartyId,
-                EventSequence = eventId,
-                EventType = "PartyDeactivated",
-                Summary = $"Party gedeactiveerd: {e.Name}",
-                ChangedBy = "system",
-                ChangedAt = e.OccurredAt,
-                Snapshot = snapshot
-            });
-
-        await conn.ExecuteAsync(@"
-            INSERT INTO audit.party_snapshots (party_id, at_event_id, snapshot, trigger_reason)
-            VALUES (@PartyId, @AtEventId, @Snapshot, @TriggerReason)",
-            new { PartyId = e.PartyId, AtEventId = eventId, Snapshot = snapshot, TriggerReason = "state_closed" });
+                return;
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        }
 
         await _search.DeletePartyAsync(e.PartyId.ToString());
 
