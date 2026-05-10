@@ -243,6 +243,15 @@ public class PartyRepository : IPartyRepository
         return rows.ToList();
     }
 
+    public async Task AddRelationshipAsync(Guid fromPartyId, Guid toPartyId, int relationshipTypeId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(@"
+            INSERT INTO mdata.party_relationships (from_party_id, to_party_id, relationship_type_id)
+            VALUES (@FromPartyId, @ToPartyId, @RelationshipTypeId)",
+            new { FromPartyId = fromPartyId, ToPartyId = toPartyId, RelationshipTypeId = relationshipTypeId });
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default) { }
 }
 
