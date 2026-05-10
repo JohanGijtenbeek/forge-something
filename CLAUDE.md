@@ -169,6 +169,7 @@ POST   /api/parties/persons
 PUT    /api/parties/{id}/organization
 PUT    /api/parties/{id}/person
 DELETE /api/parties/{id}           -- soft delete
+POST   /api/parties/{fromId}/relationships
 ```
 
 ### Search

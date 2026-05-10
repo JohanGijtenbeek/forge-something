@@ -1,6 +1,7 @@
 using Erp.Domain.Parties;
 using Erp.Domain.Parties.Commands;
 using Erp.Domain.Parties.Events;
+using MassTransit;
 using MediatR;
 
 namespace Erp.Infrastructure.Handlers;
@@ -8,12 +9,12 @@ namespace Erp.Infrastructure.Handlers;
 public class CreateOrganizationHandler : IRequestHandler<CreateOrganizationCommand, Guid>
 {
     private readonly IPartyRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public CreateOrganizationHandler(IPartyRepository repository, IPublisher publisher)
+    public CreateOrganizationHandler(IPartyRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task<Guid> Handle(CreateOrganizationCommand command, CancellationToken ct)
@@ -29,8 +30,7 @@ public class CreateOrganizationHandler : IRequestHandler<CreateOrganizationComma
 
         await _repository.AddAsync(party, ct);
 
-        // Event publishen naar alle geregistreerde handlers
-        await _publisher.Publish(new PartyCreatedEvent(
+        await _bus.Publish(new PartyCreatedEvent(
             party.Id, party.Name, party.PartyType,
             party.IsCustomer, party.IsSupplier,
             DateTime.UtcNow), ct);
@@ -42,12 +42,12 @@ public class CreateOrganizationHandler : IRequestHandler<CreateOrganizationComma
 public class CreatePersonHandler : IRequestHandler<CreatePersonCommand, Guid>
 {
     private readonly IPartyRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public CreatePersonHandler(IPartyRepository repository, IPublisher publisher)
+    public CreatePersonHandler(IPartyRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task<Guid> Handle(CreatePersonCommand command, CancellationToken ct)
@@ -61,7 +61,7 @@ public class CreatePersonHandler : IRequestHandler<CreatePersonCommand, Guid>
 
         await _repository.AddAsync(party, ct);
 
-        await _publisher.Publish(new PartyCreatedEvent(
+        await _bus.Publish(new PartyCreatedEvent(
             party.Id, party.Name, party.PartyType,
             false, false, DateTime.UtcNow), ct);
 
@@ -72,12 +72,12 @@ public class CreatePersonHandler : IRequestHandler<CreatePersonCommand, Guid>
 public class DeactivatePartyHandler : IRequestHandler<DeactivatePartyCommand>
 {
     private readonly IPartyRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public DeactivatePartyHandler(IPartyRepository repository, IPublisher publisher)
+    public DeactivatePartyHandler(IPartyRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task Handle(DeactivatePartyCommand command, CancellationToken ct)
@@ -87,7 +87,7 @@ public class DeactivatePartyHandler : IRequestHandler<DeactivatePartyCommand>
 
         await _repository.DeactivateAsync(command.PartyId, ct);
 
-        await _publisher.Publish(new PartyDeactivatedEvent(
+        await _bus.Publish(new PartyDeactivatedEvent(
             party.Id, party.Name, DateTime.UtcNow), ct);
     }
 }
@@ -95,12 +95,12 @@ public class DeactivatePartyHandler : IRequestHandler<DeactivatePartyCommand>
 public class UpdateOrganizationHandler : IRequestHandler<UpdateOrganizationCommand>
 {
     private readonly IPartyRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public UpdateOrganizationHandler(IPartyRepository repository, IPublisher publisher)
+    public UpdateOrganizationHandler(IPartyRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task Handle(UpdateOrganizationCommand command, CancellationToken ct)
@@ -112,7 +112,7 @@ public class UpdateOrganizationHandler : IRequestHandler<UpdateOrganizationComma
 
         await _repository.UpdateAsync(party, ct);
 
-        await _publisher.Publish(new PartyUpdatedEvent(
+        await _bus.Publish(new PartyUpdatedEvent(
             party.Id, party.Name, DateTime.UtcNow), ct);
     }
 }
@@ -120,12 +120,12 @@ public class UpdateOrganizationHandler : IRequestHandler<UpdateOrganizationComma
 public class UpdatePersonHandler : IRequestHandler<UpdatePersonCommand>
 {
     private readonly IPartyRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public UpdatePersonHandler(IPartyRepository repository, IPublisher publisher)
+    public UpdatePersonHandler(IPartyRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task Handle(UpdatePersonCommand command, CancellationToken ct)
@@ -137,7 +137,27 @@ public class UpdatePersonHandler : IRequestHandler<UpdatePersonCommand>
 
         await _repository.UpdateAsync(party, ct);
 
-        await _publisher.Publish(new PartyUpdatedEvent(
+        await _bus.Publish(new PartyUpdatedEvent(
             party.Id, party.Name, DateTime.UtcNow), ct);
+    }
+}
+
+public class AddPartyRelationshipHandler : IRequestHandler<AddPartyRelationshipCommand>
+{
+    private readonly IPartyRepository _repository;
+
+    public AddPartyRelationshipHandler(IPartyRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task Handle(AddPartyRelationshipCommand command, CancellationToken ct)
+    {
+        _ = await _repository.GetByIdAsync(command.FromPartyId, ct)
+            ?? throw new KeyNotFoundException($"Party {command.FromPartyId} niet gevonden.");
+        _ = await _repository.GetByIdAsync(command.ToPartyId, ct)
+            ?? throw new KeyNotFoundException($"Party {command.ToPartyId} niet gevonden.");
+
+        await _repository.AddRelationshipAsync(command.FromPartyId, command.ToPartyId, command.RelationshipTypeId, ct);
     }
 }

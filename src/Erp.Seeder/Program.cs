@@ -1,7 +1,6 @@
 using Erp.Seeder.Generators;
 using Erp.Seeder.Writers;
 using Microsoft.Extensions.Configuration;
-using Erp.Seeder.Models;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
@@ -14,6 +13,7 @@ var connectionString = config.GetConnectionString(profile)
                        ?? config.GetConnectionString("low")!;
 var meilisearchUrl = config["Meilisearch:Url"] ?? "http://localhost:7700";
 var meilisearchKey = config["Meilisearch:ApiKey"];
+var apiUrl = config["Api:Url"] ?? "http://localhost:5272";
 var seed = config.GetValue<int>("Seeder:Seed", 42);
 
 var orgCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Organizations", 50);
@@ -26,70 +26,62 @@ Console.WriteLine($"""
                      Organisaties:  {orgCount}
                      Personen:      {personCount}
                      Seed:          {seed}
+                     API:           {apiUrl}
                    ════════════════════════════════════════
                    """);
 
 var generator = new PartyGenerator(seed);
 var dbWriter = new DatabaseWriter(connectionString);
 var msWriter = new MeilisearchWriter(meilisearchUrl, meilisearchKey);
+var apiWriter = new ApiWriter(apiUrl, generator);
 
 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
 // Genereer data
 Console.WriteLine("Genereren...");
 
-var organizations = new List<GeneratedParty>();
+var organizations = new List<Erp.Seeder.Models.GeneratedParty>();
 for (var i = 0; i < orgCount; i++)
 {
     organizations.Add(generator.GenerateOrganization());
     Console.Write($"\r  {i + 1}/{orgCount} organisaties gegenereerd...");
 }
-
 Console.WriteLine();
 
-var persons = new List<GeneratedParty>();
+var persons = new List<Erp.Seeder.Models.GeneratedParty>();
 for (var i = 0; i < personCount; i++)
 {
     persons.Add(generator.GeneratePerson());
     Console.Write($"\r  {i + 1}/{personCount} personen gegenereerd...");
 }
-
 Console.WriteLine();
 
-var allParties = organizations.Concat(persons).ToList();
+Console.WriteLine($"  ✓ {organizations.Count + persons.Count} parties gegenereerd in {stopwatch.ElapsedMilliseconds}ms");
 
-var orgIds = organizations.Select(o => o.Party.Id).ToList();
-var personIds = persons.Select(p => p.Party.Id).ToList();
-var relationships = generator.GenerateRelationships(orgIds, personIds);
-
-Console.WriteLine($"  ✓ {allParties.Count} parties gegenereerd in {stopwatch.ElapsedMilliseconds}ms");
-
-// Schrijf naar database
-Console.WriteLine("\nDatabase...");
+// Leegmaken
+Console.WriteLine("\nLeegmaken...");
 await dbWriter.ClearAsync();
-await dbWriter.WriteAsync(allParties, relationships);
-
-// Schrijf naar Meilisearch
-Console.WriteLine("\nMeilisearch...");
 await msWriter.ClearAsync();
-await msWriter.WriteAsync(allParties);
+
+// Schrijven via API-pipeline
+Console.WriteLine("\nAPI...");
+var (parties, relationships, errors) = await apiWriter.WriteAsync(organizations, persons);
 
 stopwatch.Stop();
 
 var customers = organizations.Count(o => o.CustomerRole != null);
 var suppliers = organizations.Count(o => o.SupplierRole != null);
 var both = organizations.Count(o => o.CustomerRole != null && o.SupplierRole != null);
-var inactive = allParties.Count(p => !p.Party.IsActive);
 
 Console.WriteLine($"""
 
                    ════════════════════════════════════════
                      Klaar in {stopwatch.ElapsedMilliseconds}ms
-                     Totaal parties:   {allParties.Count}
+                     Totaal parties:   {parties}
                      Klanten:          {customers}
                      Leveranciers:     {suppliers}
                      Beide:            {both}
-                     Inactief:         {inactive}
-                     Relaties:         {relationships.Count}
+                     Relaties:         {relationships}
+                     Fouten:           {errors}
                    ════════════════════════════════════════
                    """);
