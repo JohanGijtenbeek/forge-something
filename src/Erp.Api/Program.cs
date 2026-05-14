@@ -1,5 +1,6 @@
 using Erp.Api.Endpoints;
 using Erp.Domain.Articles;
+using Erp.Domain.Orders;
 using Erp.Domain.Parties;
 using Erp.Domain.Search;
 using Erp.Infrastructure.Handlers;
@@ -101,6 +102,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddSingleton<DbConnectionFactory>();
 builder.Services.AddScoped<IPartyRepository, PartyRepository>();
 builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
@@ -178,6 +180,7 @@ using (var startupScope = app.Services.CreateScope())
 // Endpoints
 app.MapPartyEndpoints();
 app.MapArticleEndpoints();
+app.MapOrderEndpoints();
 app.MapArticleCategoryEndpoints();
 app.MapUnitOfMeasureEndpoints();
 app.MapOperationTypeEndpoints();

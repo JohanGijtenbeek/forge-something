@@ -34,9 +34,9 @@ Profiles: `low` (port 1433), `medium` (1434), `high` (1435).
 ### 2. Seed data
 
 ```powershell
-dotnet run --project src/Erp.Seeder -- low      # 50 orgs + 50 persons
-dotnet run --project src/Erp.Seeder -- medium   # 500 orgs + 100 persons
-dotnet run --project src/Erp.Seeder -- high     # 5000 orgs + 500 persons
+dotnet run --project src/Erp.Seeder -- low      # 50 orgs + 50 persons + 10 articles + 25 orders
+dotnet run --project src/Erp.Seeder -- medium   # 500 orgs + 100 persons + 50 articles + 150 orders
+dotnet run --project src/Erp.Seeder -- high     # 5000 orgs + 500 persons + 200 articles + 500 orders
 ```
 
 ### 3. Start services
@@ -123,6 +123,46 @@ POST   /api/parties/persons
 PUT    /api/parties/{id}/organization
 PUT    /api/parties/{id}/person
 DELETE /api/parties/{id}
+POST   /api/parties/{fromId}/relationships
+```
+
+### Articles
+
+```
+GET    /api/articles?page&pageSize&search&categoryId&articleType&includeInactive
+GET    /api/articles/{id}
+GET    /api/articles/{id}/history
+POST   /api/articles
+PUT    /api/articles/{id}
+DELETE /api/articles/{id}
+
+GET    /api/articles/{id}/bom
+POST   /api/articles/{id}/bom
+PUT    /api/articles/{id}/bom/{lineId}
+DELETE /api/articles/{id}/bom/{lineId}
+
+GET    /api/articles/{id}/operations
+POST   /api/articles/{id}/operations
+PUT    /api/articles/{id}/operations/{opId}
+DELETE /api/articles/{id}/operations/{opId}
+
+GET    /api/article-categories
+POST   /api/article-categories
+GET    /api/units-of-measure
+POST   /api/units-of-measure
+GET    /api/operation-types
+GET    /api/machine-types
+```
+
+### Orders
+
+```
+GET    /api/orders?page&pageSize&search&status
+GET    /api/orders/{id}
+GET    /api/orders/{id}/history
+POST   /api/orders
+PUT    /api/orders/{id}/status
+DELETE /api/orders/{id}
 ```
 
 ### Search

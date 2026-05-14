@@ -1,3 +1,4 @@
+using Bogus;
 using Erp.Seeder.Generators;
 using Erp.Seeder.Models;
 using System.Collections.Concurrent;
@@ -218,5 +219,164 @@ public class ApiWriter
         }
     }
 
+    public async Task<(int orders, int errors)> WriteOrdersAsync(
+        List<Erp.Seeder.Models.OrderSeedRow> orders,
+        CancellationToken ct = default)
+    {
+        var errors = 0;
+        var completed = 0;
+
+        Console.WriteLine($"  → {orders.Count} orders via API...");
+
+        await Parallel.ForEachAsync(orders, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = _parallelism,
+            CancellationToken = ct
+        }, async (order, orderCt) =>
+        {
+            var ok = await PostOrderAsync(order, orderCt);
+            if (ok)
+            {
+                var done = Interlocked.Increment(ref completed);
+                Console.Write($"\r  {done}/{orders.Count} orders aangemaakt...");
+            }
+            else
+            {
+                Interlocked.Increment(ref errors);
+            }
+        });
+
+        Console.WriteLine();
+        return (completed, errors);
+    }
+
+    private async Task<bool> PostOrderAsync(Erp.Seeder.Models.OrderSeedRow order, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync("/api/orders", new
+            {
+                articleId = order.ArticleId,
+                customerId = order.CustomerId,
+                quantity = order.Quantity,
+                unitOfMeasure = order.UnitOfMeasure,
+                dueDate = order.DueDate,
+                notes = order.Notes
+            }, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<(int done, int errors)> WriteArticleBomAndOperationsAsync(int seed, CancellationToken ct = default)
+    {
+        var faker = new Faker { Random = new Randomizer(seed + 400) };
+
+        var manufacturedResponse = await _client.GetFromJsonAsync<ArticlePagedResult>(
+            "/api/articles?articleType=manufactured&pageSize=500&page=1", ct);
+        var manufactured = manufacturedResponse?.Items ?? [];
+
+        var rawResponse = await _client.GetFromJsonAsync<ArticlePagedResult>(
+            "/api/articles?articleType=raw_material&pageSize=500&page=1", ct);
+        var rawMaterials = rawResponse?.Items ?? [];
+
+        var operationTypes = await _client.GetFromJsonAsync<List<OperationTypeItem>>(
+            "/api/operation-types", ct) ?? [];
+
+        if (manufactured.Count == 0 || operationTypes.Count == 0)
+        {
+            Console.WriteLine("  ⚠ Geen gefabriceerde artikelen of bewerkingstypes — stap overgeslagen.");
+            return (0, 0);
+        }
+
+        Console.WriteLine($"  → BOM en routing voor {manufactured.Count} gefabriceerde artikelen...");
+
+        var done = 0;
+        var errors = 0;
+
+        foreach (var article in manufactured)
+        {
+            var componentCount = faker.Random.Int(2, 4);
+            var usedComponents = new HashSet<Guid>();
+
+            for (var i = 0; i < componentCount && rawMaterials.Count > 0; i++)
+            {
+                ArticleItem component;
+                var attempts = 0;
+                do { component = faker.PickRandom(rawMaterials); }
+                while (usedComponents.Contains(component.Id) && ++attempts < 10);
+                if (usedComponents.Contains(component.Id)) continue;
+
+                usedComponents.Add(component.Id);
+                var ok = await PostBomComponentAsync(
+                    article.Id, component.Id,
+                    Math.Round(faker.Random.Decimal(0.5m, 20m), 4),
+                    (i + 1) * 10, ct);
+                if (!ok) errors++;
+            }
+
+            var opCount = faker.Random.Int(2, 5);
+            for (var i = 0; i < opCount; i++)
+            {
+                var opType = faker.PickRandom(operationTypes);
+                var ok = await PostArticleOperationAsync(
+                    article.Id,
+                    (i + 1) * 10,
+                    opType.Id,
+                    Math.Round(faker.Random.Decimal(15m, 120m), 2),
+                    faker.Random.Bool(0.1f), ct);
+                if (!ok) errors++;
+            }
+
+            done++;
+            Console.Write($"\r  {done}/{manufactured.Count} artikelen verrijkt...");
+        }
+
+        Console.WriteLine();
+        return (done, errors);
+    }
+
+    private async Task<bool> PostBomComponentAsync(
+        Guid articleId, Guid childArticleId, decimal quantity, int sortOrder, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync($"/api/articles/{articleId}/bom", new
+            {
+                childArticleId,
+                quantity,
+                unitOfMeasureId = (Guid?)null,
+                sortOrder
+            }, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
+    private async Task<bool> PostArticleOperationAsync(
+        Guid articleId, int sequenceNumber, Guid operationTypeId,
+        decimal estimatedMinutes, bool isConditional, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync($"/api/articles/{articleId}/operations", new
+            {
+                sequenceNumber,
+                operationTypeId,
+                estimatedMinutes,
+                notes = (string?)null,
+                isConditional
+            }, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
     private record IdResponse(Guid Id);
+    private record ArticleItem(Guid Id, string Code, string Name, string ArticleType, string? UnitOfMeasure);
+    private record OperationTypeItem(Guid Id, string Name, bool IsSubcontracted);
+    private record ArticlePagedResult(List<ArticleItem> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }

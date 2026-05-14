@@ -10,6 +10,8 @@ public interface ISearchService
     Task DeletePartyAsync(string id);
     Task IndexArticleAsync(ArticleSearchDocument document);
     Task DeleteArticleAsync(string id);
+    Task IndexOrderAsync(OrderSearchDocument document);
+    Task DeleteOrderAsync(string id);
     Task InitializeAsync();
     Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default);
 }
@@ -40,4 +42,17 @@ public record ArticleSearchDocument(
 {
     public string EntityType => SearchEntityTypes.Article;
     public string DisplayLabel => $"{Code} - {Name}";
+}
+
+public record OrderSearchDocument(
+    string Id,
+    int OrderNumber,
+    string ArticleCode,
+    string ArticleName,
+    string? CustomerName,
+    string Status
+)
+{
+    public string EntityType => SearchEntityTypes.Order;
+    public string DisplayLabel => $"#{OrderNumber} — {ArticleName}";
 }
