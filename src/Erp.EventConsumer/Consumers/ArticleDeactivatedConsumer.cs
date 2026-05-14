@@ -28,6 +28,7 @@ public class ArticleDeactivatedConsumer : IConsumer<ArticleDeactivatedEvent>
         var ct = context.CancellationToken;
 
         using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
 
         using (var tx = await conn.BeginTransactionAsync(ct))
         {
