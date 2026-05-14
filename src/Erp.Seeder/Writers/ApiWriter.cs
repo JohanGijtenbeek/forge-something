@@ -249,6 +249,8 @@ public class ApiWriter
         return (completed, errors);
     }
 
+    private int _orderErrorsLogged;
+
     private async Task<bool> PostOrderAsync(Erp.Seeder.Models.OrderSeedRow order, CancellationToken ct)
     {
         try
@@ -262,10 +264,20 @@ public class ApiWriter
                 dueDate = order.DueDate,
                 notes = order.Notes
             }, ct);
-            return response.IsSuccessStatusCode;
+
+            if (response.IsSuccessStatusCode) return true;
+
+            if (Interlocked.Increment(ref _orderErrorsLogged) <= 3)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                Console.WriteLine($"\n  ✗ Order error {(int)response.StatusCode}: {body[..Math.Min(200, body.Length)]}");
+            }
+            return false;
         }
-        catch
+        catch (Exception ex)
         {
+            if (Interlocked.Increment(ref _orderErrorsLogged) <= 3)
+                Console.WriteLine($"\n  ✗ Order exception: {ex.Message}");
             return false;
         }
     }
