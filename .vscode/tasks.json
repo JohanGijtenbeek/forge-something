@@ -59,6 +59,19 @@
     },
 
     // ============================================================
+    // EVENT CONSUMER
+    // ============================================================
+    {
+      "label": "Consumer: watch",
+      "type": "shell",
+      "command": "dotnet watch",
+      "options": { "cwd": "${workspaceFolder}/src/Erp.EventConsumer" },
+      "isBackground": true,
+      "problemMatcher": "$msCompile",
+      "presentation": { "panel": "dedicated" }
+    },
+
+    // ============================================================
     // FRONTEND
     // ============================================================
     {
@@ -77,7 +90,7 @@
     {
       "label": "Dev: open browser tabs",
       "type": "shell",
-      "command": "Start-Sleep 5; Start-Process 'http://localhost:5173'; Start-Process 'http://localhost:5272/scalar'; Start-Process 'http://localhost:7700'",
+      "command": "Start-Sleep 5; Start-Process 'http://localhost:5173'; Start-Process 'http://localhost:5272/scalar'; Start-Process 'http://localhost:7700'; Start-Process 'http://localhost:15672'",
       "options": {
         "shell": { "executable": "powershell", "args": ["-Command"] }
       },
@@ -159,7 +172,7 @@
     },
     {
       "label": "Dev: start services",
-      "dependsOn": ["API: watch", "Frontend: dev", "Dev: open browser tabs"],
+      "dependsOn": ["API: watch", "Consumer: watch", "Frontend: dev", "Dev: open browser tabs"],
       "dependsOrder": "parallel",
       "problemMatcher": []
     }

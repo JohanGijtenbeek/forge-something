@@ -38,3 +38,9 @@ public record UpdatePersonCommand(
     string LastName,
     string? Initials
 ) : IRequest;
+
+public record AddPartyRelationshipCommand(
+    Guid FromPartyId,
+    Guid ToPartyId,
+    int RelationshipTypeId
+) : IRequest;

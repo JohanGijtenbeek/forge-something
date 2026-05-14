@@ -14,6 +14,6 @@ public interface IPartyRepository
 
     Task SaveChangesAsync(CancellationToken ct = default);
 
-    // Partial update methods - worden direct weggeschreven
     Task<IReadOnlyList<PartyHistoryEntry>> GetHistoryAsync(Guid id, CancellationToken ct = default);
+    Task AddRelationshipAsync(Guid fromPartyId, Guid toPartyId, int relationshipTypeId, CancellationToken ct = default);
 }

@@ -121,6 +121,25 @@ public static class PartyEndpoints
             })
             .WithName("UpdatePerson").WithSummary("Persoon bijwerken");
 
+        group.MapPost("/{fromId:guid}/relationships", async Task<Results<NoContent, NotFound, Conflict>> (
+                Guid fromId, AddRelationshipRequest request, IMediator mediator, CancellationToken ct = default) =>
+            {
+                try
+                {
+                    await mediator.Send(new AddPartyRelationshipCommand(fromId, request.ToPartyId, request.RelationshipTypeId), ct);
+                    return TypedResults.NoContent();
+                }
+                catch (KeyNotFoundException)
+                {
+                    return TypedResults.NotFound();
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
+                {
+                    return TypedResults.Conflict();
+                }
+            })
+            .WithName("AddPartyRelationship").WithSummary("Relatie toevoegen tussen twee parties");
+
         group.MapDelete("/{id:guid}", async Task<Results<NoContent, NotFound>> (
                 Guid id, IMediator mediator, CancellationToken ct = default) =>
             {

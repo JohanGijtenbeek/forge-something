@@ -7,6 +7,7 @@ using Erp.Infrastructure.Persistence;
 using Erp.Infrastructure.Repositories;
 using Erp.Infrastructure.Search;
 using Erp.Infrastructure.Snapshots;
+using MassTransit;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
@@ -102,6 +103,16 @@ builder.Services.AddScoped<IPartyRepository, PartyRepository>();
 // MediatR
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(CreateOrganizationHandler).Assembly));
+
+// MassTransit — publish-only, no consumers in Api
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMq:Host"]);
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
 
 // Search
 builder.Services.AddSingleton<ISearchService, MeilisearchService>();
