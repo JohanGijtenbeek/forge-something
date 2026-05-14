@@ -84,6 +84,10 @@ var (parties, relationships, errors) = await apiWriter.WriteAsync(organizations,
 // Artikelen via API-pipeline
 var (articlesDone, articleErrors) = await apiWriter.WriteArticlesAsync(articles);
 
+// BOM en routing toevoegen aan gefabriceerde artikelen (vóór orders, zodat snapshot gevuld is)
+Console.WriteLine("\nArtikelen verrijken...");
+var (articlesEnriched, enrichErrors) = await apiWriter.WriteArticleBomAndOperationsAsync(seed);
+
 var customers = organizations.Count(o => o.CustomerRole != null);
 var suppliers = organizations.Count(o => o.SupplierRole != null);
 var both = organizations.Count(o => o.CustomerRole != null && o.SupplierRole != null);
@@ -106,6 +110,6 @@ Console.WriteLine($"""
                      Relaties:         {relationships}
                      Artikelen:        {articlesDone}
                      Orders:           {ordersDone}
-                     Fouten:           {errors + articleErrors + orderErrors}
+                     Fouten:           {errors + articleErrors + enrichErrors + orderErrors}
                    ════════════════════════════════════════
                    """);
