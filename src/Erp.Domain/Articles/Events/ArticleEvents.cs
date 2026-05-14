@@ -1,5 +1,3 @@
-using MediatR;
-
 namespace Erp.Domain.Articles.Events;
 
 public record ArticleCreatedEvent(
@@ -8,7 +6,7 @@ public record ArticleCreatedEvent(
     string Name,
     string ArticleType,
     DateTime OccurredAt
-) : INotification;
+);
 
 public record ArticleUpdatedEvent(
     Guid ArticleId,
@@ -16,11 +14,11 @@ public record ArticleUpdatedEvent(
     string Name,
     string ArticleType,
     DateTime OccurredAt
-) : INotification;
+);
 
 public record ArticleDeactivatedEvent(
     Guid ArticleId,
     string Code,
     string Name,
     DateTime OccurredAt
-) : INotification;
+);

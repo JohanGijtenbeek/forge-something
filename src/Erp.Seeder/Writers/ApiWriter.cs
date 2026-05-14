@@ -11,7 +11,7 @@ public class ApiWriter
     private readonly PartyGenerator _generator;
     private readonly int _parallelism;
 
-    public ApiWriter(string apiUrl, PartyGenerator generator, int parallelism = 10)
+    public ApiWriter(string apiUrl, PartyGenerator generator, int parallelism = 5)
     {
         _client = new HttpClient { BaseAddress = new Uri(apiUrl) };
         _generator = generator;
@@ -157,6 +157,59 @@ public class ApiWriter
                 $"/api/parties/{rel.FromPartyId}/relationships",
                 new { toPartyId = rel.ToPartyId, relationshipTypeId = rel.RelationshipTypeId },
                 ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<(int articles, int errors)> WriteArticlesAsync(
+        List<ArticleSeedRow> articles,
+        CancellationToken ct = default)
+    {
+        var errors = 0;
+        var completed = 0;
+
+        Console.WriteLine($"  → {articles.Count} artikelen via API...");
+
+        await Parallel.ForEachAsync(articles, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = _parallelism,
+            CancellationToken = ct
+        }, async (article, articleCt) =>
+        {
+            var ok = await PostArticleAsync(article, articleCt);
+            if (ok)
+            {
+                var done = Interlocked.Increment(ref completed);
+                Console.Write($"\r  {done}/{articles.Count} artikelen aangemaakt...");
+            }
+            else
+            {
+                Interlocked.Increment(ref errors);
+            }
+        });
+
+        Console.WriteLine();
+        return (completed, errors);
+    }
+
+    private async Task<bool> PostArticleAsync(ArticleSeedRow article, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync("/api/articles", new
+            {
+                code = article.Code,
+                name = article.Name,
+                articleType = article.ArticleType,
+                description = article.Description,
+                categoryId = article.CategoryId,
+                unitOfMeasureId = article.UnitOfMeasureId,
+                purchasePrice = article.PurchasePrice
+            }, ct);
             return response.IsSuccessStatusCode;
         }
         catch

@@ -1,6 +1,7 @@
 using Erp.Domain.Articles;
 using Erp.Domain.Articles.Commands;
 using Erp.Domain.Articles.Events;
+using MassTransit;
 using MediatR;
 
 namespace Erp.Infrastructure.Handlers;
@@ -8,12 +9,12 @@ namespace Erp.Infrastructure.Handlers;
 public class CreateArticleHandler : IRequestHandler<CreateArticleCommand, Guid>
 {
     private readonly IArticleRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public CreateArticleHandler(IArticleRepository repository, IPublisher publisher)
+    public CreateArticleHandler(IArticleRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task<Guid> Handle(CreateArticleCommand command, CancellationToken ct)
@@ -26,7 +27,7 @@ public class CreateArticleHandler : IRequestHandler<CreateArticleCommand, Guid>
 
         await _repository.AddAsync(article, ct);
 
-        await _publisher.Publish(new ArticleCreatedEvent(
+        await _bus.Publish(new ArticleCreatedEvent(
             article.Id, article.Code, article.Name, article.ArticleType, DateTime.UtcNow), ct);
 
         return article.Id;
@@ -36,12 +37,12 @@ public class CreateArticleHandler : IRequestHandler<CreateArticleCommand, Guid>
 public class UpdateArticleHandler : IRequestHandler<UpdateArticleCommand>
 {
     private readonly IArticleRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public UpdateArticleHandler(IArticleRepository repository, IPublisher publisher)
+    public UpdateArticleHandler(IArticleRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task Handle(UpdateArticleCommand command, CancellationToken ct)
@@ -57,7 +58,7 @@ public class UpdateArticleHandler : IRequestHandler<UpdateArticleCommand>
 
         await _repository.UpdateAsync(article, ct);
 
-        await _publisher.Publish(new ArticleUpdatedEvent(
+        await _bus.Publish(new ArticleUpdatedEvent(
             article.Id, article.Code, article.Name, article.ArticleType, DateTime.UtcNow), ct);
     }
 }
@@ -65,12 +66,12 @@ public class UpdateArticleHandler : IRequestHandler<UpdateArticleCommand>
 public class DeactivateArticleHandler : IRequestHandler<DeactivateArticleCommand>
 {
     private readonly IArticleRepository _repository;
-    private readonly IPublisher _publisher;
+    private readonly IBus _bus;
 
-    public DeactivateArticleHandler(IArticleRepository repository, IPublisher publisher)
+    public DeactivateArticleHandler(IArticleRepository repository, IBus bus)
     {
         _repository = repository;
-        _publisher = publisher;
+        _bus = bus;
     }
 
     public async Task Handle(DeactivateArticleCommand command, CancellationToken ct)
@@ -80,7 +81,7 @@ public class DeactivateArticleHandler : IRequestHandler<DeactivateArticleCommand
 
         await _repository.DeactivateAsync(command.ArticleId, ct);
 
-        await _publisher.Publish(new ArticleDeactivatedEvent(
+        await _bus.Publish(new ArticleDeactivatedEvent(
             article.Id, article.Code, article.Name, DateTime.UtcNow), ct);
     }
 }

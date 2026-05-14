@@ -71,15 +71,16 @@ Console.WriteLine("\nLeegmaken...");
 await dbWriter.ClearAsync();
 await msWriter.ClearAsync();
 
-// Schrijven parties via API-pipeline (publishes events → EventConsumer → Meilisearch)
+// Artikel referentiedata (stable GUIDs, direct naar DB)
+Console.WriteLine("\nReferentiedata...");
+await dbWriter.WriteArticleReferenceDataAsync();
+
+// Parties via API-pipeline (publishes events → EventConsumer → Meilisearch)
 Console.WriteLine("\nAPI...");
 var (parties, relationships, errors) = await apiWriter.WriteAsync(organizations, persons);
 
-// Schrijven artikelen direct naar database + Meilisearch
-Console.WriteLine("\nArtikelen...");
-await dbWriter.WriteArticlesAsync(articles);
-var categoryNames = ArticleGenerator.Categories.ToDictionary(c => c.Id, c => c.Name);
-await msWriter.WriteArticlesAsync(articles, categoryNames);
+// Artikelen via API-pipeline
+var (articlesDone, articleErrors) = await apiWriter.WriteArticlesAsync(articles);
 
 stopwatch.Stop();
 
@@ -96,7 +97,7 @@ Console.WriteLine($"""
                      Leveranciers:     {suppliers}
                      Beide:            {both}
                      Relaties:         {relationships}
-                     Artikelen:        {articles.Count}
-                     Fouten:           {errors}
+                     Artikelen:        {articlesDone}
+                     Fouten:           {errors + articleErrors}
                    ════════════════════════════════════════
                    """);

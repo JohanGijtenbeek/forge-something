@@ -49,12 +49,12 @@ public class DatabaseWriter
         Console.WriteLine("  ✓ Database leeg");
     }
 
-    public async Task WriteArticlesAsync(List<ArticleSeedRow> articles, CancellationToken ct = default)
+    public async Task WriteArticleReferenceDataAsync(CancellationToken ct = default)
     {
         using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync(ct);
 
-        Console.WriteLine($"  → {articles.Count} artikelen naar database...");
+        Console.WriteLine("  → Artikel referentiedata naar database...");
 
         foreach (var cat in ArticleGenerator.Categories)
         {
@@ -74,13 +74,6 @@ public class DatabaseWriter
                 uom);
         }
 
-        await conn.ExecuteAsync(@"
-            INSERT INTO mdata.articles
-                (id, code, name, article_type, description, category_id, unit_of_measure_id, purchase_price, is_active)
-            VALUES
-                (@Id, @Code, @Name, @ArticleType, @Description, @CategoryId, @UnitOfMeasureId, @PurchasePrice, @IsActive)",
-            articles);
-
-        Console.WriteLine("  ✓ Artikelen klaar");
+        Console.WriteLine("  ✓ Referentiedata klaar");
     }
 }
