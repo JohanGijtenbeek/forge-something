@@ -203,6 +203,17 @@ GET    /api/operation-types
 GET    /api/machine-types
 ```
 
+### Orders
+
+```
+GET    /api/orders?page&pageSize&search&status
+GET    /api/orders/{id}
+GET    /api/orders/{id}/history
+POST   /api/orders
+PUT    /api/orders/{id}/status
+DELETE /api/orders/{id}            -- cancel (soft delete)
+```
+
 ### Search
 
 ```
@@ -312,7 +323,7 @@ release/0.1.0
 ## Pending
 
 - [x] Articles domain
-- [ ] Orders domain
+- [x] Orders domain
 - [ ] Auth (IdentityServer or Keycloak)
 - [ ] Add/edit addresses and contact methods via UI
 - [ ] Pagination on list endpoints
