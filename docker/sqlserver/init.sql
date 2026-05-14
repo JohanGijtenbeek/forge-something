@@ -611,3 +611,127 @@ GO
 
 PRINT 'Routing template schema succesvol geladen.';
 GO
+
+-- ============================================================
+-- ORDERS DOMAIN
+-- ============================================================
+
+-- Order number sequence
+IF NOT EXISTS (SELECT * FROM sys.sequences seq JOIN sys.schemas s ON seq.schema_id = s.schema_id WHERE s.name = 'mdata' AND seq.name = 'seq_order_number')
+    CREATE SEQUENCE mdata.seq_order_number AS INT START WITH 1000 INCREMENT BY 1;
+GO
+
+-- Production orders
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'production_orders')
+BEGIN
+    CREATE TABLE mdata.production_orders (
+        id                  UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        order_number        INT                 NOT NULL DEFAULT NEXT VALUE FOR mdata.seq_order_number,
+        article_id          UNIQUEIDENTIFIER    NOT NULL,
+        article_code        NVARCHAR(50)        NOT NULL,
+        article_name        NVARCHAR(200)       NOT NULL,
+        article_revision    NVARCHAR(10)        NULL,
+        customer_id         UNIQUEIDENTIFIER    NULL,
+        customer_name       NVARCHAR(200)       NULL,
+        quantity            DECIMAL(12,4)       NOT NULL,
+        unit_of_measure     NVARCHAR(20)        NOT NULL,
+        status              NVARCHAR(20)        NOT NULL DEFAULT 'draft',
+        due_date            DATE                NULL,
+        notes               NVARCHAR(1000)      NULL,
+        created_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        updated_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_production_orders             PRIMARY KEY (id),
+        CONSTRAINT uq_production_orders_number      UNIQUE (order_number),
+        CONSTRAINT chk_production_orders_status     CHECK (status IN ('draft','released','inprogress','done','cancelled')),
+        CONSTRAINT fk_production_orders_article     FOREIGN KEY (article_id)  REFERENCES mdata.articles(id),
+        CONSTRAINT fk_production_orders_customer    FOREIGN KEY (customer_id) REFERENCES mdata.parties(id)
+    );
+
+    CREATE INDEX ix_production_orders_status     ON mdata.production_orders (status);
+    CREATE INDEX ix_production_orders_article_id ON mdata.production_orders (article_id);
+    CREATE INDEX ix_production_orders_created_at ON mdata.production_orders (created_at DESC);
+END
+GO
+
+-- Order BOM snapshot lines
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'order_bom_lines')
+BEGIN
+    CREATE TABLE mdata.order_bom_lines (
+        id              UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        order_id        UNIQUEIDENTIFIER    NOT NULL,
+        component_id    UNIQUEIDENTIFIER    NOT NULL,
+        component_code  NVARCHAR(50)        NOT NULL,
+        component_name  NVARCHAR(200)       NOT NULL,
+        quantity        DECIMAL(12,4)       NOT NULL,
+        unit_of_measure NVARCHAR(20)        NOT NULL,
+        notes           NVARCHAR(500)       NULL,
+        CONSTRAINT pk_order_bom_lines           PRIMARY KEY (id),
+        CONSTRAINT fk_order_bom_lines_order     FOREIGN KEY (order_id) REFERENCES mdata.production_orders(id)
+    );
+
+    CREATE INDEX ix_order_bom_lines_order_id ON mdata.order_bom_lines (order_id);
+END
+GO
+
+-- Order operation snapshot lines
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'order_operations')
+BEGIN
+    CREATE TABLE mdata.order_operations (
+        id                   UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        order_id             UNIQUEIDENTIFIER    NOT NULL,
+        sequence_number      INT                 NOT NULL,
+        operation_type_id    UNIQUEIDENTIFIER    NOT NULL,
+        operation_type_name  NVARCHAR(100)       NOT NULL,
+        is_subcontracted     BIT                 NOT NULL DEFAULT 0,
+        estimated_minutes    DECIMAL(8,2)        NULL,
+        notes                NVARCHAR(500)       NULL,
+        is_conditional       BIT                 NOT NULL DEFAULT 0,
+        CONSTRAINT pk_order_operations          PRIMARY KEY (id),
+        CONSTRAINT fk_order_operations_order    FOREIGN KEY (order_id) REFERENCES mdata.production_orders(id)
+    );
+
+    CREATE INDEX ix_order_operations_order_id ON mdata.order_operations (order_id);
+END
+GO
+
+-- Order history (materialized for UI)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'order_history')
+BEGIN
+    CREATE TABLE audit.order_history (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        order_id        UNIQUEIDENTIFIER    NOT NULL,
+        event_sequence  BIGINT              NOT NULL,
+        event_type      NVARCHAR(200)       NOT NULL,
+        summary         NVARCHAR(500)       NOT NULL,
+        changed_by      NVARCHAR(200)       NOT NULL DEFAULT 'system',
+        changed_at      DATETIME2           NOT NULL,
+        snapshot        NVARCHAR(MAX)       NULL,
+        CONSTRAINT pk_order_history         PRIMARY KEY (id),
+        CONSTRAINT fk_order_history_event   FOREIGN KEY (event_sequence) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_order_history_order_id   ON audit.order_history (order_id, changed_at DESC);
+    CREATE INDEX ix_order_history_changed_at ON audit.order_history (changed_at DESC);
+END
+GO
+
+-- Order snapshots
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'order_snapshots')
+BEGIN
+    CREATE TABLE audit.order_snapshots (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        order_id        UNIQUEIDENTIFIER    NOT NULL,
+        at_event_id     BIGINT              NOT NULL,
+        snapshot        NVARCHAR(MAX)       NOT NULL,
+        trigger_reason  NVARCHAR(100)       NOT NULL,
+        created_at      DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_order_snapshots           PRIMARY KEY (id),
+        CONSTRAINT fk_order_snapshots_event     FOREIGN KEY (at_event_id) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_order_snapshots_order_id ON audit.order_snapshots (order_id, at_event_id DESC);
+END
+GO
+
+PRINT 'Orders schema succesvol geladen.';
+GO

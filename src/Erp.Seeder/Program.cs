@@ -20,6 +20,7 @@ var seed = config.GetValue<int>("Seeder:Seed", 42);
 var orgCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Organizations", 50);
 var personCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Persons", 50);
 var articleCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Articles", 10);
+var orderCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Orders", 25);
 
 Console.WriteLine($"""
                    ════════════════════════════════════════
@@ -35,6 +36,7 @@ Console.WriteLine($"""
 
 var generator = new PartyGenerator(seed);
 var articleGenerator = new ArticleGenerator(seed);
+var orderGenerator = new OrderGenerator(seed, apiUrl);
 var dbWriter = new DatabaseWriter(connectionString);
 var msWriter = new MeilisearchWriter(meilisearchUrl, meilisearchKey);
 var apiWriter = new ApiWriter(apiUrl, generator);
@@ -82,11 +84,16 @@ var (parties, relationships, errors) = await apiWriter.WriteAsync(organizations,
 // Artikelen via API-pipeline
 var (articlesDone, articleErrors) = await apiWriter.WriteArticlesAsync(articles);
 
-stopwatch.Stop();
-
 var customers = organizations.Count(o => o.CustomerRole != null);
 var suppliers = organizations.Count(o => o.SupplierRole != null);
 var both = organizations.Count(o => o.CustomerRole != null && o.SupplierRole != null);
+
+// Orders via API-pipeline
+Console.WriteLine("\nOrders...");
+var orderSeedRows = await orderGenerator.GenerateAsync(orderCount);
+var (ordersDone, orderErrors) = await apiWriter.WriteOrdersAsync(orderSeedRows);
+
+stopwatch.Stop();
 
 Console.WriteLine($"""
 
@@ -98,6 +105,7 @@ Console.WriteLine($"""
                      Beide:            {both}
                      Relaties:         {relationships}
                      Artikelen:        {articlesDone}
-                     Fouten:           {errors + articleErrors}
+                     Orders:           {ordersDone}
+                     Fouten:           {errors + articleErrors + orderErrors}
                    ════════════════════════════════════════
                    """);

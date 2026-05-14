@@ -109,3 +109,14 @@ public record UnitOfMeasureSeedRow(
     string Name,
     string Abbreviation
 );
+
+// ── Orders ────────────────────────────────────────────────────────────────
+
+public record OrderSeedRow(
+    Guid ArticleId,
+    Guid? CustomerId,
+    decimal Quantity,
+    string UnitOfMeasure,
+    DateOnly? DueDate,
+    string? Notes
+);

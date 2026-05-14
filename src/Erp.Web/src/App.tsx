@@ -11,6 +11,9 @@ import EventViewerPage from './pages/EventViewerPage';
 import ArticlesPage from './pages/articles/ArticlesPage';
 import ArticleDetailPage from './pages/articles/ArticleDetailPage';
 import CreateArticlePage from './pages/articles/CreateArticlePage';
+import OrdersPage from './pages/orders/OrdersPage';
+import OrderDetailPage from './pages/orders/OrderDetailPage';
+import CreateOrderPage from './pages/orders/CreateOrderPage';
 
 const router = createBrowserRouter([
   {
@@ -28,6 +31,9 @@ const router = createBrowserRouter([
       { path: 'articles', element: <ArticlesPage /> },
       { path: 'articles/new', element: <CreateArticlePage /> },
       { path: 'articles/:id', element: <ArticleDetailPage /> },
+      { path: 'orders', element: <OrdersPage /> },
+      { path: 'orders/create', element: <CreateOrderPage /> },
+      { path: 'orders/:id', element: <OrderDetailPage /> },
     ],
   },
 ]);

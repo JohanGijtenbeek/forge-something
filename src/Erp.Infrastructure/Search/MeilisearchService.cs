@@ -13,6 +13,7 @@ public class MeilisearchService : ISearchService
 
     private const string PartiesIndex = "parties";
     private const string ArticlesIndex = "articles";
+    private const string OrdersIndex = "orders";
 
     public MeilisearchService(IConfiguration config, ILogger<MeilisearchService> logger)
     {
@@ -28,6 +29,7 @@ public class MeilisearchService : ISearchService
     {
         await EnsureIndexAsync(PartiesIndex, "id", ["name", "city", "email", "phone"]);
         await EnsureIndexAsync(ArticlesIndex, "id", ["code", "name", "category"]);
+        await EnsureIndexAsync(OrdersIndex, "id", ["orderNumber", "articleCode", "articleName", "customerName"]);
     }
 
     public async Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default)
@@ -115,6 +117,17 @@ public class MeilisearchService : ISearchService
             _logger.LogError(ex, "Zoeken mislukt in '{Index}'", ArticlesIndex);
         }
 
+        try
+        {
+            var index = _client.Index(OrdersIndex);
+            var hits = await index.SearchAsync<OrderSearchDocument>(query, new SearchQuery { Limit = limit });
+            results.AddRange(hits.Hits.Select(o => new SearchResult(o.Id, o.EntityType, o.DisplayLabel, o.CustomerName)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Zoeken mislukt in '{Index}'", OrdersIndex);
+        }
+
         return results;
     }
 
@@ -171,6 +184,34 @@ public class MeilisearchService : ISearchService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Verwijderen mislukt voor article '{Id}'", id);
+        }
+    }
+
+    public async Task IndexOrderAsync(OrderSearchDocument document)
+    {
+        try
+        {
+            var index = _client.Index(OrdersIndex);
+            var task = await index.AddDocumentsAsync(new[] { document });
+            _logger.LogInformation("Order '{Id}' geïndexeerd (taskUid={Uid})", document.Id, task.TaskUid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Indexeren mislukt voor order '{Id}'", document.Id);
+        }
+    }
+
+    public async Task DeleteOrderAsync(string id)
+    {
+        try
+        {
+            var index = _client.Index(OrdersIndex);
+            await index.DeleteOneDocumentAsync(id);
+            _logger.LogInformation("Order '{Id}' verwijderd uit index", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Verwijderen mislukt voor order '{Id}'", id);
         }
     }
 }

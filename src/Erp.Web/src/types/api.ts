@@ -233,6 +233,85 @@ export interface AddBomComponentRequest {
   sortOrder: number;
 }
 
+// ── Orders ────────────────────────────────────────────────────────────────
+
+export type OrderStatus = 'draft' | 'released' | 'inprogress' | 'done' | 'cancelled';
+
+export interface OrderSummaryResponse {
+  id: string;
+  orderNumber: number;
+  articleCode: string;
+  articleName: string;
+  customerName: string | null;
+  quantity: number;
+  unitOfMeasure: string;
+  status: OrderStatus;
+  dueDate: string | null;
+  createdAt: string;
+}
+
+export interface OrderDetailResponse {
+  id: string;
+  orderNumber: number;
+  articleId: string;
+  articleCode: string;
+  articleName: string;
+  articleRevision: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  quantity: number;
+  unitOfMeasure: string;
+  status: OrderStatus;
+  dueDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  bomLines: OrderBomLineResponse[];
+  operations: OrderOperationResponse[];
+}
+
+export interface OrderBomLineResponse {
+  id: string;
+  componentId: string;
+  componentCode: string;
+  componentName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  notes: string | null;
+}
+
+export interface OrderOperationResponse {
+  id: string;
+  sequenceNumber: number;
+  operationTypeId: string;
+  operationTypeName: string;
+  isSubcontracted: boolean;
+  estimatedMinutes: number | null;
+  notes: string | null;
+  isConditional: boolean;
+}
+
+export interface OrderHistoryEntry {
+  id: number;
+  eventType: string;
+  summary: string;
+  changedBy: string;
+  changedAt: string;
+}
+
+export interface CreateOrderRequest {
+  articleId: string;
+  customerId: string | null;
+  quantity: number;
+  unitOfMeasure: string;
+  dueDate: string | null;
+  notes: string | null;
+}
+
+export interface UpdateOrderStatusRequest {
+  status: string;
+}
+
 // ── Parties ────────────────────────────────────────────────────────────────
 
 // Request types

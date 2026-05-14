@@ -218,5 +218,57 @@ public class ApiWriter
         }
     }
 
+    public async Task<(int orders, int errors)> WriteOrdersAsync(
+        List<Erp.Seeder.Models.OrderSeedRow> orders,
+        CancellationToken ct = default)
+    {
+        var errors = 0;
+        var completed = 0;
+
+        Console.WriteLine($"  → {orders.Count} orders via API...");
+
+        await Parallel.ForEachAsync(orders, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = _parallelism,
+            CancellationToken = ct
+        }, async (order, orderCt) =>
+        {
+            var ok = await PostOrderAsync(order, orderCt);
+            if (ok)
+            {
+                var done = Interlocked.Increment(ref completed);
+                Console.Write($"\r  {done}/{orders.Count} orders aangemaakt...");
+            }
+            else
+            {
+                Interlocked.Increment(ref errors);
+            }
+        });
+
+        Console.WriteLine();
+        return (completed, errors);
+    }
+
+    private async Task<bool> PostOrderAsync(Erp.Seeder.Models.OrderSeedRow order, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync("/api/orders", new
+            {
+                articleId = order.ArticleId,
+                customerId = order.CustomerId,
+                quantity = order.Quantity,
+                unitOfMeasure = order.UnitOfMeasure,
+                dueDate = order.DueDate,
+                notes = order.Notes
+            }, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private record IdResponse(Guid Id);
 }
