@@ -188,11 +188,19 @@ POST   /api/articles/{id}/bom
 PUT    /api/articles/{id}/bom/{lineId}
 DELETE /api/articles/{id}/bom/{lineId}
 
+GET    /api/articles/{id}/operations
+POST   /api/articles/{id}/operations
+PUT    /api/articles/{id}/operations/{opId}
+DELETE /api/articles/{id}/operations/{opId}  -- soft delete
+
 GET    /api/article-categories
 POST   /api/article-categories
 
 GET    /api/units-of-measure
 POST   /api/units-of-measure
+
+GET    /api/operation-types
+GET    /api/machine-types
 ```
 
 ### Search
