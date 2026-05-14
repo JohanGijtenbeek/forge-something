@@ -29,6 +29,8 @@ public class DatabaseWriter
         await conn.ExecuteAsync("DELETE FROM audit.event_log");
         await conn.ExecuteAsync("DELETE FROM mdata.bill_of_materials");
         await conn.ExecuteAsync("DELETE FROM mdata.articles");
+        await conn.ExecuteAsync("DELETE FROM mdata.article_categories");
+        await conn.ExecuteAsync("DELETE FROM mdata.units_of_measure");
         await conn.ExecuteAsync("DELETE FROM mdata.party_relationships");
         await conn.ExecuteAsync("DELETE FROM mdata.customer_roles");
         await conn.ExecuteAsync("DELETE FROM mdata.supplier_roles");
