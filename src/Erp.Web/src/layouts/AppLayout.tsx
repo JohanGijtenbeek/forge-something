@@ -6,6 +6,7 @@ const navigation = [
   { name: 'Relaties', href: '/parties' },
   { name: 'Klanten', href: '/parties/customers' },
   { name: 'Leveranciers', href: '/parties/suppliers' },
+  { name: 'Artikelen', href: '/articles' },
   { name: 'Live Events', href: '/events' },
 ];
 

@@ -1,5 +1,5 @@
 using Dapper;
-using Erp.Domain.Parties.Events;
+using Erp.Domain.Articles.Events;
 using Erp.Domain.Search;
 using Erp.EventConsumer.Hubs;
 using Erp.Infrastructure.Persistence;
@@ -9,20 +9,20 @@ using System.Text.Json;
 
 namespace Erp.EventConsumer.Consumers;
 
-public class PartyCreatedConsumer : IConsumer<PartyCreatedEvent>
+public class ArticleDeactivatedConsumer : IConsumer<ArticleDeactivatedEvent>
 {
     private readonly DbConnectionFactory _factory;
     private readonly ISearchService _search;
     private readonly IHubContext<EventHub> _hub;
 
-    public PartyCreatedConsumer(DbConnectionFactory factory, ISearchService search, IHubContext<EventHub> hub)
+    public ArticleDeactivatedConsumer(DbConnectionFactory factory, ISearchService search, IHubContext<EventHub> hub)
     {
         _factory = factory;
         _search = search;
         _hub = hub;
     }
 
-    public async Task Consume(ConsumeContext<PartyCreatedEvent> context)
+    public async Task Consume(ConsumeContext<ArticleDeactivatedEvent> context)
     {
         var e = context.Message;
         var ct = context.CancellationToken;
@@ -40,9 +40,9 @@ public class PartyCreatedConsumer : IConsumer<PartyCreatedEvent>
                     VALUES (@AggregateId, @AggregateType, @EventType, @Payload, @OccurredAt, @MessageId)",
                     new
                     {
-                        AggregateId = e.PartyId,
-                        AggregateType = "Party",
-                        EventType = "PartyCreated",
+                        AggregateId = e.ArticleId,
+                        AggregateType = "Article",
+                        EventType = "ArticleDeactivated",
                         Payload = JsonSerializer.Serialize(e),
                         OccurredAt = e.OccurredAt,
                         context.MessageId
@@ -51,25 +51,25 @@ public class PartyCreatedConsumer : IConsumer<PartyCreatedEvent>
                 var snapshot = JsonSerializer.Serialize(e);
 
                 await conn.ExecuteAsync(@"
-                    INSERT INTO audit.party_history
-                        (party_id, event_sequence, event_type, summary, changed_by, changed_at, snapshot)
+                    INSERT INTO audit.article_history
+                        (article_id, event_sequence, event_type, summary, changed_by, changed_at, snapshot)
                     VALUES
-                        (@PartyId, @EventSequence, @EventType, @Summary, @ChangedBy, @ChangedAt, @Snapshot)",
+                        (@ArticleId, @EventSequence, @EventType, @Summary, @ChangedBy, @ChangedAt, @Snapshot)",
                     new
                     {
-                        e.PartyId,
+                        e.ArticleId,
                         EventSequence = eventId,
-                        EventType = "PartyCreated",
-                        Summary = $"Party aangemaakt: {e.Name}",
+                        EventType = "ArticleDeactivated",
+                        Summary = $"Article deactivated: {e.Code} - {e.Name}",
                         ChangedBy = "system",
                         ChangedAt = e.OccurredAt,
                         Snapshot = snapshot
                     }, tx);
 
                 await conn.ExecuteAsync(@"
-                    INSERT INTO audit.party_snapshots (party_id, at_event_id, snapshot, trigger_reason)
-                    VALUES (@PartyId, @AtEventId, @Snapshot, @TriggerReason)",
-                    new { PartyId = e.PartyId, AtEventId = eventId, Snapshot = snapshot, TriggerReason = "state_closed" }, tx);
+                    INSERT INTO audit.article_snapshots (article_id, at_event_id, snapshot, trigger_reason)
+                    VALUES (@ArticleId, @AtEventId, @Snapshot, @TriggerReason)",
+                    new { e.ArticleId, AtEventId = eventId, Snapshot = snapshot, TriggerReason = "state_closed" }, tx);
 
                 await tx.CommitAsync(ct);
             }
@@ -84,18 +84,13 @@ public class PartyCreatedConsumer : IConsumer<PartyCreatedEvent>
             }
         }
 
-        var roles = new List<string>();
-        if (e.IsCustomer) roles.Add("customer");
-        if (e.IsSupplier) roles.Add("supplier");
-
-        await _search.IndexPartyAsync(new PartySearchDocument(
-            e.PartyId.ToString(), e.Name, null, null, null, [.. roles], true));
+        await _search.DeleteArticleAsync(e.ArticleId.ToString());
 
         await _hub.Clients.All.SendAsync("EventReceived", new
         {
-            eventType = "PartyCreated",
-            aggregateType = "Party",
-            aggregateId = e.PartyId.ToString(),
+            eventType = "ArticleDeactivated",
+            aggregateType = "Article",
+            aggregateId = e.ArticleId.ToString(),
             occurredAt = e.OccurredAt,
             payload = (object)e
         }, ct);

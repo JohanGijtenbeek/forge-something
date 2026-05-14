@@ -42,6 +42,7 @@ erp-solution/
     Erp.Domain/          — Entities, commands, events, interfaces
     Erp.Infrastructure/  — Dapper repositories, handlers, search, snapshots
     Erp.Api/             — Minimal API endpoints, Program.cs
+    Erp.EventConsumer/   — MassTransit consumers (audit, search, SignalR)
     Erp.Seeder/          — Bogus console seeder
     Erp.Web/             — React + Vite frontend
   tests/
@@ -172,6 +173,36 @@ DELETE /api/parties/{id}           -- soft delete
 POST   /api/parties/{fromId}/relationships
 ```
 
+### Articles
+
+```
+GET    /api/articles?page&pageSize&search&categoryId&articleType&includeInactive
+GET    /api/articles/{id}
+GET    /api/articles/{id}/history
+POST   /api/articles
+PUT    /api/articles/{id}
+DELETE /api/articles/{id}          -- soft delete
+
+GET    /api/articles/{id}/bom
+POST   /api/articles/{id}/bom
+PUT    /api/articles/{id}/bom/{lineId}
+DELETE /api/articles/{id}/bom/{lineId}
+
+GET    /api/articles/{id}/operations
+POST   /api/articles/{id}/operations
+PUT    /api/articles/{id}/operations/{opId}
+DELETE /api/articles/{id}/operations/{opId}  -- soft delete
+
+GET    /api/article-categories
+POST   /api/article-categories
+
+GET    /api/units-of-measure
+POST   /api/units-of-measure
+
+GET    /api/operation-types
+GET    /api/machine-types
+```
+
 ### Search
 
 ```
@@ -280,7 +311,7 @@ release/0.1.0
 
 ## Pending
 
-- [ ] Articles domain
+- [x] Articles domain
 - [ ] Orders domain
 - [ ] Auth (IdentityServer or Keycloak)
 - [ ] Add/edit addresses and contact methods via UI

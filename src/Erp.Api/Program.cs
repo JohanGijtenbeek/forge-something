@@ -1,4 +1,5 @@
 using Erp.Api.Endpoints;
+using Erp.Domain.Articles;
 using Erp.Domain.Parties;
 using Erp.Domain.Search;
 using Erp.Infrastructure.Handlers;
@@ -99,6 +100,7 @@ builder.Services.AddHealthChecks()
 // Dapper
 builder.Services.AddSingleton<DbConnectionFactory>();
 builder.Services.AddScoped<IPartyRepository, PartyRepository>();
+builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
@@ -175,6 +177,11 @@ using (var startupScope = app.Services.CreateScope())
 
 // Endpoints
 app.MapPartyEndpoints();
+app.MapArticleEndpoints();
+app.MapArticleCategoryEndpoints();
+app.MapUnitOfMeasureEndpoints();
+app.MapOperationTypeEndpoints();
+app.MapMachineTypeEndpoints();
 app.MapSearchEndpoints();
 
 app.Run();

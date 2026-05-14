@@ -23,6 +23,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<PartyCreatedConsumer>();
     x.AddConsumer<PartyDeactivatedConsumer>();
     x.AddConsumer<PartyUpdatedConsumer>();
+    x.AddConsumer<ArticleCreatedConsumer>();
+    x.AddConsumer<ArticleUpdatedConsumer>();
+    x.AddConsumer<ArticleDeactivatedConsumer>();
 
     x.UsingRabbitMq((ctx, cfg) =>
     {

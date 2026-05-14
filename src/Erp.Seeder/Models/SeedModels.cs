@@ -83,3 +83,29 @@ public record GeneratedParty(
     CustomerRoleRow? CustomerRole,
     SupplierRoleRow? SupplierRole
 );
+
+// ── Articles ────────────────────────────────────────────────────────────────
+
+public record ArticleSeedRow(
+    Guid Id,
+    string Code,
+    string Name,
+    string ArticleType,
+    string? Description,
+    Guid? CategoryId,
+    Guid? UnitOfMeasureId,
+    decimal? PurchasePrice,
+    bool IsActive
+);
+
+public record ArticleCategorySeedRow(
+    Guid Id,
+    string Name,
+    int SortOrder
+);
+
+public record UnitOfMeasureSeedRow(
+    Guid Id,
+    string Name,
+    string Abbreviation
+);

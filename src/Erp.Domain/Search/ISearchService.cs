@@ -8,6 +8,8 @@ public interface ISearchService
     Task<IEnumerable<SearchResult>> GlobalSearchAsync(string query, int limit = 5);
     Task IndexPartyAsync(PartySearchDocument document);
     Task DeletePartyAsync(string id);
+    Task IndexArticleAsync(ArticleSearchDocument document);
+    Task DeleteArticleAsync(string id);
     Task InitializeAsync();
     Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default);
 }
@@ -26,4 +28,16 @@ public record PartySearchDocument(
 {
     public string EntityType => SearchEntityTypes.Party;
     public string DisplayLabel => Name;
+}
+
+public record ArticleSearchDocument(
+    string Id,
+    string Code,
+    string Name,
+    string? Category,
+    bool IsActive
+)
+{
+    public string EntityType => SearchEntityTypes.Article;
+    public string DisplayLabel => $"{Code} - {Name}";
 }

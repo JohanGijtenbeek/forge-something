@@ -356,3 +356,258 @@ BEGIN
     CREATE INDEX ix_party_snapshots_party_id ON audit.party_snapshots (party_id, at_event_id DESC);
 END
 GO
+
+-- ============================================================
+-- ARTICLES DOMAIN
+-- ============================================================
+
+-- Article categories (user-configurable)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'article_categories')
+BEGIN
+    CREATE TABLE mdata.article_categories (
+        id          UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name        NVARCHAR(100)       NOT NULL,
+        sort_order  INT                 NOT NULL DEFAULT 0,
+        is_active   BIT                 NOT NULL DEFAULT 1,
+        created_at  DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        updated_at  DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_article_categories        PRIMARY KEY (id),
+        CONSTRAINT uq_article_categories_name   UNIQUE (name)
+    );
+
+    INSERT INTO mdata.article_categories (name, sort_order) VALUES
+        ('Koolstofstaal',   0),
+        ('RVS',             1),
+        ('Non-Ferro',       2),
+        ('Aluminium',       3),
+        ('Kunststof',       4),
+        ('Diversen',        5),
+        ('Gereedschapstaal',6),
+        ('Gietstuk/deel',   7),
+        ('Titaan',          8);
+END
+GO
+
+-- Units of measure (user-configurable)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'units_of_measure')
+BEGIN
+    CREATE TABLE mdata.units_of_measure (
+        id              UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name            NVARCHAR(100)       NOT NULL,
+        abbreviation    NVARCHAR(10)        NOT NULL,
+        is_active       BIT                 NOT NULL DEFAULT 1,
+        created_at      DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        updated_at      DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_units_of_measure      PRIMARY KEY (id),
+        CONSTRAINT uq_units_of_measure_name UNIQUE (name)
+    );
+
+    INSERT INTO mdata.units_of_measure (name, abbreviation) VALUES
+        ('Kilogram',        'kg'),
+        ('Meter',           'm'),
+        ('Stuk',            'st'),
+        ('Uur',             'uur'),
+        ('Vierkante meter', 'm²');
+END
+GO
+
+-- Article number sequence
+IF NOT EXISTS (SELECT * FROM sys.sequences seq JOIN sys.schemas s ON seq.schema_id = s.schema_id WHERE s.name = 'mdata' AND seq.name = 'seq_article_number')
+    CREATE SEQUENCE mdata.seq_article_number START WITH 1000 INCREMENT BY 1;
+GO
+
+-- Articles
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'articles')
+BEGIN
+    CREATE TABLE mdata.articles (
+        id                  UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        article_number      INT                 NOT NULL DEFAULT NEXT VALUE FOR mdata.seq_article_number,
+        code                NVARCHAR(50)        NOT NULL,
+        name                NVARCHAR(200)       NOT NULL,
+        description         NVARCHAR(MAX)       NULL,
+        article_type        NVARCHAR(50)        NOT NULL DEFAULT 'raw_material',
+        category_id         UNIQUEIDENTIFIER    NULL,
+        unit_of_measure_id  UNIQUEIDENTIFIER    NULL,
+        purchase_price      DECIMAL(18,4)       NULL,
+        is_active           BIT                 NOT NULL DEFAULT 1,
+        created_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        updated_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_articles          PRIMARY KEY (id),
+        CONSTRAINT uq_articles_number   UNIQUE (article_number),
+        CONSTRAINT uq_articles_code     UNIQUE (code),
+        CONSTRAINT chk_articles_type    CHECK (article_type IN ('raw_material','manufactured','bought_out','service')),
+        CONSTRAINT fk_articles_category FOREIGN KEY (category_id)        REFERENCES mdata.article_categories(id),
+        CONSTRAINT fk_articles_uom      FOREIGN KEY (unit_of_measure_id) REFERENCES mdata.units_of_measure(id)
+    );
+
+    CREATE INDEX ix_articles_name         ON mdata.articles (name);
+    CREATE INDEX ix_articles_is_active    ON mdata.articles (is_active);
+    CREATE INDEX ix_articles_category_id  ON mdata.articles (category_id);
+    CREATE INDEX ix_articles_article_type ON mdata.articles (article_type);
+END
+GO
+
+-- Bill of Materials
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'bill_of_materials')
+BEGIN
+    CREATE TABLE mdata.bill_of_materials (
+        id                  UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        parent_article_id   UNIQUEIDENTIFIER    NOT NULL,
+        child_article_id    UNIQUEIDENTIFIER    NOT NULL,
+        quantity            DECIMAL(18,4)       NOT NULL,
+        unit_of_measure_id  UNIQUEIDENTIFIER    NULL,
+        sort_order          INT                 NOT NULL DEFAULT 0,
+        is_active           BIT                 NOT NULL DEFAULT 1,
+        created_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_bill_of_materials             PRIMARY KEY (id),
+        CONSTRAINT uq_bom_parent_child              UNIQUE (parent_article_id, child_article_id),
+        CONSTRAINT chk_bom_no_self_reference        CHECK (parent_article_id <> child_article_id),
+        CONSTRAINT fk_bom_parent_article            FOREIGN KEY (parent_article_id) REFERENCES mdata.articles(id),
+        CONSTRAINT fk_bom_child_article             FOREIGN KEY (child_article_id)  REFERENCES mdata.articles(id),
+        CONSTRAINT fk_bom_uom                       FOREIGN KEY (unit_of_measure_id) REFERENCES mdata.units_of_measure(id)
+    );
+
+    CREATE INDEX ix_bom_parent_article_id ON mdata.bill_of_materials (parent_article_id);
+    CREATE INDEX ix_bom_child_article_id  ON mdata.bill_of_materials (child_article_id);
+END
+GO
+
+-- Article history
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'article_history')
+BEGIN
+    CREATE TABLE audit.article_history (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        article_id      UNIQUEIDENTIFIER    NOT NULL,
+        event_sequence  BIGINT              NOT NULL,
+        event_type      NVARCHAR(200)       NOT NULL,
+        summary         NVARCHAR(500)       NOT NULL,
+        changed_by      NVARCHAR(200)       NOT NULL DEFAULT 'system',
+        changed_at      DATETIME2           NOT NULL,
+        snapshot        NVARCHAR(MAX)       NOT NULL,
+        CONSTRAINT pk_article_history       PRIMARY KEY (id),
+        CONSTRAINT fk_article_history_event FOREIGN KEY (event_sequence) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_article_history_article_id  ON audit.article_history (article_id, changed_at DESC);
+    CREATE INDEX ix_article_history_changed_at  ON audit.article_history (changed_at DESC);
+END
+GO
+
+-- Article snapshots
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'article_snapshots')
+BEGIN
+    CREATE TABLE audit.article_snapshots (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        article_id      UNIQUEIDENTIFIER    NOT NULL,
+        at_event_id     BIGINT              NOT NULL,
+        snapshot        NVARCHAR(MAX)       NOT NULL,
+        trigger_reason  NVARCHAR(50)        NOT NULL,
+        created_at      DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_article_snapshots         PRIMARY KEY (id),
+        CONSTRAINT fk_article_snapshots_event   FOREIGN KEY (at_event_id) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_article_snapshots_article_id ON audit.article_snapshots (article_id, at_event_id DESC);
+END
+GO
+
+PRINT 'Articles schema succesvol geladen.';
+GO
+
+-- ============================================================
+-- ROUTING TEMPLATE — REFERENCE DATA
+-- ============================================================
+
+-- Machine types (reference data — never mutated by the app)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'machine_types')
+BEGIN
+    CREATE TABLE mdata.machine_types (
+        id        UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name      NVARCHAR(100)       NOT NULL,
+        is_active BIT                 NOT NULL DEFAULT 1,
+        CONSTRAINT pk_machine_types     PRIMARY KEY (id),
+        CONSTRAINT uq_machine_types_name UNIQUE (name)
+    );
+
+    INSERT INTO mdata.machine_types (name) VALUES
+        ('Lathe'),
+        ('Milling Center'),
+        ('Grinder'),
+        ('Special machine'),
+        ('Inspection station');
+END
+GO
+
+-- Operation types (reference data — never mutated by the app)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'operation_types')
+BEGIN
+    CREATE TABLE mdata.operation_types (
+        id               UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name             NVARCHAR(100)       NOT NULL,
+        is_subcontracted BIT                 NOT NULL DEFAULT 0,
+        machine_type_id  UNIQUEIDENTIFIER    NULL,
+        is_active        BIT                 NOT NULL DEFAULT 1,
+        CONSTRAINT pk_operation_types           PRIMARY KEY (id),
+        CONSTRAINT uq_operation_types_name      UNIQUE (name),
+        CONSTRAINT fk_operation_types_machine   FOREIGN KEY (machine_type_id) REFERENCES mdata.machine_types(id)
+    );
+
+    INSERT INTO mdata.operation_types (name, is_subcontracted, machine_type_id)
+    SELECT op.name, op.is_subcontracted, mt.id
+    FROM (VALUES
+        ('CNC Turning',              CAST(0 AS BIT), 'Lathe'),
+        ('CNC Milling',              CAST(0 AS BIT), 'Milling Center'),
+        ('Grinding',                 CAST(0 AS BIT), 'Grinder'),
+        ('Honing',                   CAST(0 AS BIT), 'Special machine'),
+        ('Broaching',                CAST(0 AS BIT), 'Special machine'),
+        ('Intermediate inspection',  CAST(0 AS BIT), 'Inspection station'),
+        ('Final inspection',         CAST(0 AS BIT), 'Inspection station'),
+        ('3D Measuring',             CAST(0 AS BIT), 'Inspection station'),
+        ('Sawing',                   CAST(0 AS BIT), NULL),
+        ('Deburring',                CAST(0 AS BIT), NULL),
+        ('Welding',                  CAST(0 AS BIT), NULL),
+        ('Barrel finishing',         CAST(0 AS BIT), NULL),
+        ('Marking',                  CAST(0 AS BIT), NULL),
+        ('Material issue',           CAST(0 AS BIT), NULL),
+        ('Final finishing',          CAST(0 AS BIT), NULL),
+        ('Assembly',                 CAST(0 AS BIT), NULL),
+        ('Heat treatment',           CAST(1 AS BIT), NULL),
+        ('Surface treatment',        CAST(1 AS BIT), NULL),
+        ('Stellite / carbide coating', CAST(1 AS BIT), NULL),
+        ('Measurement report',       CAST(1 AS BIT), NULL)
+    ) AS op(name, is_subcontracted, machine_type_name)
+    LEFT JOIN mdata.machine_types mt ON mt.name = op.machine_type_name;
+END
+GO
+
+-- Article operations (routing template)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'article_operations')
+BEGIN
+    CREATE TABLE mdata.article_operations (
+        id                   UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        article_id           UNIQUEIDENTIFIER    NOT NULL,
+        sequence_number      INT                 NOT NULL,
+        operation_type_id    UNIQUEIDENTIFIER    NOT NULL,
+        operation_type_name  NVARCHAR(100)       NOT NULL,
+        is_subcontracted     BIT                 NOT NULL DEFAULT 0,
+        estimated_minutes    DECIMAL(8,2)        NULL,
+        notes                NVARCHAR(500)       NULL,
+        is_conditional       BIT                 NOT NULL DEFAULT 0,
+        is_active            BIT                 NOT NULL DEFAULT 1,
+        created_at           DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_article_operations            PRIMARY KEY (id),
+        CONSTRAINT fk_article_operations_article    FOREIGN KEY (article_id)        REFERENCES mdata.articles(id),
+        CONSTRAINT fk_article_operations_op_type    FOREIGN KEY (operation_type_id) REFERENCES mdata.operation_types(id)
+    );
+
+    CREATE INDEX ix_article_operations_article_id ON mdata.article_operations (article_id);
+END
+GO
+
+-- Migration: revision column on articles
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('mdata.articles') AND name = 'revision')
+    ALTER TABLE mdata.articles ADD revision NVARCHAR(10) NULL;
+GO
+
+PRINT 'Routing template schema succesvol geladen.';
+GO
