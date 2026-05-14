@@ -20,6 +20,16 @@ public interface IArticleRepository
     Task<Guid> AddBomComponentAsync(Guid parentArticleId, Guid childArticleId, decimal quantity, Guid? unitOfMeasureId, int sortOrder, CancellationToken ct = default);
     Task UpdateBomComponentAsync(Guid bomLineId, decimal quantity, Guid? unitOfMeasureId, int sortOrder, CancellationToken ct = default);
     Task RemoveBomComponentAsync(Guid bomLineId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ArticleOperation>> GetOperationsAsync(Guid articleId, CancellationToken ct = default);
+    Task<ArticleOperation?> GetOperationAsync(Guid operationId, CancellationToken ct = default);
+    Task AddOperationAsync(ArticleOperation op, CancellationToken ct = default);
+    Task UpdateOperationAsync(ArticleOperation op, CancellationToken ct = default);
+    Task RemoveOperationAsync(Guid operationId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<OperationType>> GetOperationTypesAsync(CancellationToken ct = default);
+    Task<OperationType?> GetOperationTypeAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<MachineType>> GetMachineTypesAsync(CancellationToken ct = default);
 }
 
 public record ArticleHistoryEntry(

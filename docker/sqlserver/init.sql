@@ -513,3 +513,101 @@ GO
 
 PRINT 'Articles schema succesvol geladen.';
 GO
+
+-- ============================================================
+-- ROUTING TEMPLATE — REFERENCE DATA
+-- ============================================================
+
+-- Machine types (reference data — never mutated by the app)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'machine_types')
+BEGIN
+    CREATE TABLE mdata.machine_types (
+        id        UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name      NVARCHAR(100)       NOT NULL,
+        is_active BIT                 NOT NULL DEFAULT 1,
+        CONSTRAINT pk_machine_types     PRIMARY KEY (id),
+        CONSTRAINT uq_machine_types_name UNIQUE (name)
+    );
+
+    INSERT INTO mdata.machine_types (name) VALUES
+        ('Lathe'),
+        ('Milling Center'),
+        ('Grinder'),
+        ('Special machine'),
+        ('Inspection station');
+END
+GO
+
+-- Operation types (reference data — never mutated by the app)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'operation_types')
+BEGIN
+    CREATE TABLE mdata.operation_types (
+        id               UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        name             NVARCHAR(100)       NOT NULL,
+        is_subcontracted BIT                 NOT NULL DEFAULT 0,
+        machine_type_id  UNIQUEIDENTIFIER    NULL,
+        is_active        BIT                 NOT NULL DEFAULT 1,
+        CONSTRAINT pk_operation_types           PRIMARY KEY (id),
+        CONSTRAINT uq_operation_types_name      UNIQUE (name),
+        CONSTRAINT fk_operation_types_machine   FOREIGN KEY (machine_type_id) REFERENCES mdata.machine_types(id)
+    );
+
+    INSERT INTO mdata.operation_types (name, is_subcontracted, machine_type_id)
+    SELECT op.name, op.is_subcontracted, mt.id
+    FROM (VALUES
+        ('CNC Turning',              CAST(0 AS BIT), 'Lathe'),
+        ('CNC Milling',              CAST(0 AS BIT), 'Milling Center'),
+        ('Grinding',                 CAST(0 AS BIT), 'Grinder'),
+        ('Honing',                   CAST(0 AS BIT), 'Special machine'),
+        ('Broaching',                CAST(0 AS BIT), 'Special machine'),
+        ('Intermediate inspection',  CAST(0 AS BIT), 'Inspection station'),
+        ('Final inspection',         CAST(0 AS BIT), 'Inspection station'),
+        ('3D Measuring',             CAST(0 AS BIT), 'Inspection station'),
+        ('Sawing',                   CAST(0 AS BIT), NULL),
+        ('Deburring',                CAST(0 AS BIT), NULL),
+        ('Welding',                  CAST(0 AS BIT), NULL),
+        ('Barrel finishing',         CAST(0 AS BIT), NULL),
+        ('Marking',                  CAST(0 AS BIT), NULL),
+        ('Material issue',           CAST(0 AS BIT), NULL),
+        ('Final finishing',          CAST(0 AS BIT), NULL),
+        ('Assembly',                 CAST(0 AS BIT), NULL),
+        ('Heat treatment',           CAST(1 AS BIT), NULL),
+        ('Surface treatment',        CAST(1 AS BIT), NULL),
+        ('Stellite / carbide coating', CAST(1 AS BIT), NULL),
+        ('Measurement report',       CAST(1 AS BIT), NULL)
+    ) AS op(name, is_subcontracted, machine_type_name)
+    LEFT JOIN mdata.machine_types mt ON mt.name = op.machine_type_name;
+END
+GO
+
+-- Article operations (routing template)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'article_operations')
+BEGIN
+    CREATE TABLE mdata.article_operations (
+        id                   UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        article_id           UNIQUEIDENTIFIER    NOT NULL,
+        sequence_number      INT                 NOT NULL,
+        operation_type_id    UNIQUEIDENTIFIER    NOT NULL,
+        operation_type_name  NVARCHAR(100)       NOT NULL,
+        is_subcontracted     BIT                 NOT NULL DEFAULT 0,
+        estimated_minutes    DECIMAL(8,2)        NULL,
+        notes                NVARCHAR(500)       NULL,
+        is_conditional       BIT                 NOT NULL DEFAULT 0,
+        is_active            BIT                 NOT NULL DEFAULT 1,
+        created_at           DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_article_operations            PRIMARY KEY (id),
+        CONSTRAINT fk_article_operations_article    FOREIGN KEY (article_id)        REFERENCES mdata.articles(id),
+        CONSTRAINT fk_article_operations_op_type    FOREIGN KEY (operation_type_id) REFERENCES mdata.operation_types(id)
+    );
+
+    CREATE INDEX ix_article_operations_article_id ON mdata.article_operations (article_id);
+END
+GO
+
+-- Migration: revision column on articles
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('mdata.articles') AND name = 'revision')
+    ALTER TABLE mdata.articles ADD revision NVARCHAR(10) NULL;
+GO
+
+PRINT 'Routing template schema succesvol geladen.';
+GO

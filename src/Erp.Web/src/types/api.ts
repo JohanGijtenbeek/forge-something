@@ -123,6 +123,7 @@ export interface ArticleDetailResponse {
   unitOfMeasureId: string | null;
   unitOfMeasure: string | null;
   purchasePrice: number | null;
+  revision: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -170,6 +171,7 @@ export interface CreateArticleRequest {
   categoryId: string | null;
   unitOfMeasureId: string | null;
   purchasePrice: number | null;
+  revision?: string | null;
 }
 
 export interface UpdateArticleRequest {
@@ -180,6 +182,48 @@ export interface UpdateArticleRequest {
   categoryId: string | null;
   unitOfMeasureId: string | null;
   purchasePrice: number | null;
+  revision?: string | null;
+}
+
+export interface ArticleOperationResponse {
+  id: string;
+  sequenceNumber: number;
+  operationTypeId: string;
+  operationTypeName: string;
+  isSubcontracted: boolean;
+  estimatedMinutes: number | null;
+  notes: string | null;
+  isConditional: boolean;
+}
+
+export interface AddArticleOperationRequest {
+  sequenceNumber: number;
+  operationTypeId: string;
+  estimatedMinutes: number | null;
+  notes: string | null;
+  isConditional: boolean;
+}
+
+export interface UpdateArticleOperationRequest {
+  sequenceNumber: number;
+  estimatedMinutes: number | null;
+  notes: string | null;
+  isConditional: boolean;
+}
+
+export interface OperationTypeResponse {
+  id: string;
+  name: string;
+  isSubcontracted: boolean;
+  machineTypeId: string | null;
+  machineTypeName: string | null;
+  isActive: boolean;
+}
+
+export interface MachineTypeResponse {
+  id: string;
+  name: string;
+  isActive: boolean;
 }
 
 export interface AddBomComponentRequest {

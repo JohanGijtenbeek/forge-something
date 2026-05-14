@@ -15,6 +15,7 @@ export default function CreateArticlePage() {
     code: '',
     name: '',
     articleType: 'raw_material' as ArticleType,
+    revision: '',
     description: '',
     categoryId: '',
     unitOfMeasureId: '',
@@ -35,6 +36,7 @@ export default function CreateArticlePage() {
         categoryId: form.categoryId || null,
         unitOfMeasureId: form.unitOfMeasureId || null,
         purchasePrice: form.purchasePrice ? parseFloat(form.purchasePrice) : null,
+        revision: form.revision || null,
       });
       navigate(`/articles/${result.id}`);
     } catch (err: unknown) {
@@ -132,6 +134,17 @@ export default function CreateArticlePage() {
             onChange={e => setForm(f => ({ ...f, purchasePrice: e.target.value }))}
             className={inputClass}
             placeholder="0.0000"
+          />
+        </Field>
+
+        <Field label="Revisie">
+          <input
+            type="text"
+            maxLength={10}
+            value={form.revision}
+            onChange={e => setForm(f => ({ ...f, revision: e.target.value }))}
+            className={inputClass}
+            placeholder="A"
           />
         </Field>
 

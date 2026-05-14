@@ -4,16 +4,20 @@ import {
   useArticle,
   useArticleHistory,
   useArticleBom,
+  useArticleOperations,
+  useOperationTypes,
   useDeactivateArticle,
   useUpdateArticle,
   useAddBomComponent,
   useRemoveBomComponent,
+  useAddArticleOperation,
+  useRemoveArticleOperation,
   useArticleCategories,
   useUnitsOfMeasure,
 } from '../../hooks/useArticles';
-import type { ArticleType, BomLineResponse } from '../../types/api';
+import type { ArticleType, BomLineResponse, ArticleOperationResponse } from '../../types/api';
 
-type Tab = 'details' | 'bom' | 'history';
+type Tab = 'details' | 'bom' | 'operations' | 'history';
 
 const articleTypeLabel: Record<ArticleType, string> = {
   raw_material: 'Grondstof',
@@ -36,10 +40,13 @@ export default function ArticleDetailPage() {
   const [tab, setTab] = useState<Tab>('details');
   const [isEditing, setIsEditing] = useState(false);
   const [showAddBom, setShowAddBom] = useState(false);
+  const [showAddOp, setShowAddOp] = useState(false);
 
   const { data: article, isLoading, isError } = useArticle(id!);
   const { data: history } = useArticleHistory(id!);
   const { data: bom } = useArticleBom(id!);
+  const { data: operations } = useArticleOperations(id!);
+  const { data: operationTypes } = useOperationTypes();
   const { data: categories } = useArticleCategories();
   const { data: unitsOfMeasure } = useUnitsOfMeasure();
 
@@ -47,6 +54,8 @@ export default function ArticleDetailPage() {
   const update = useUpdateArticle(id!);
   const addBom = useAddBomComponent(id!);
   const removeBom = useRemoveBomComponent(id!);
+  const addOp = useAddArticleOperation(id!);
+  const removeOp = useRemoveArticleOperation(id!);
 
   const [editForm, setEditForm] = useState<{
     code: string;
@@ -56,6 +65,7 @@ export default function ArticleDetailPage() {
     categoryId: string;
     unitOfMeasureId: string;
     purchasePrice: string;
+    revision: string;
   }>({
     code: '',
     name: '',
@@ -64,6 +74,7 @@ export default function ArticleDetailPage() {
     categoryId: '',
     unitOfMeasureId: '',
     purchasePrice: '',
+    revision: '',
   });
 
   const [bomForm, setBomForm] = useState({
@@ -71,6 +82,14 @@ export default function ArticleDetailPage() {
     quantity: '',
     unitOfMeasureId: '',
     sortOrder: '0',
+  });
+
+  const [opForm, setOpForm] = useState({
+    sequenceNumber: '10',
+    operationTypeId: '',
+    estimatedMinutes: '',
+    notes: '',
+    isConditional: false,
   });
 
   const startEditing = () => {
@@ -83,6 +102,7 @@ export default function ArticleDetailPage() {
       categoryId: article.categoryId ?? '',
       unitOfMeasureId: article.unitOfMeasureId ?? '',
       purchasePrice: article.purchasePrice?.toString() ?? '',
+      revision: article.revision ?? '',
     });
     setIsEditing(true);
   };
@@ -96,6 +116,7 @@ export default function ArticleDetailPage() {
       categoryId: editForm.categoryId || null,
       unitOfMeasureId: editForm.unitOfMeasureId || null,
       purchasePrice: editForm.purchasePrice ? parseFloat(editForm.purchasePrice) : null,
+      revision: editForm.revision || null,
     });
     setIsEditing(false);
   };
@@ -123,11 +144,29 @@ export default function ArticleDetailPage() {
     await removeBom.mutateAsync(line.id);
   };
 
+  const handleAddOp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await addOp.mutateAsync({
+      sequenceNumber: parseInt(opForm.sequenceNumber, 10),
+      operationTypeId: opForm.operationTypeId,
+      estimatedMinutes: opForm.estimatedMinutes ? parseFloat(opForm.estimatedMinutes) : null,
+      notes: opForm.notes || null,
+      isConditional: opForm.isConditional,
+    });
+    setOpForm({ sequenceNumber: '10', operationTypeId: '', estimatedMinutes: '', notes: '', isConditional: false });
+    setShowAddOp(false);
+  };
+
+  const handleRemoveOp = async (op: ArticleOperationResponse) => {
+    if (!confirm(`Bewerking "${op.operationTypeName}" verwijderen?`)) return;
+    await removeOp.mutateAsync(op.id);
+  };
+
   if (isLoading) return <div className="text-sm text-gray-500">Laden...</div>;
   if (isError || !article) return <div className="text-sm text-red-500">Artikel niet gevonden.</div>;
 
   const isManufactured = article.articleType === 'manufactured';
-  const availableTabs: Tab[] = isManufactured ? ['details', 'bom', 'history'] : ['details', 'history'];
+  const availableTabs: Tab[] = isManufactured ? ['details', 'bom', 'operations', 'history'] : ['details', 'history'];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -203,12 +242,15 @@ export default function ArticleDetailPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t === 'details' ? 'Details' : t === 'bom' ? 'Stuklijst' : 'Geschiedenis'}
+              {t === 'details' ? 'Details' : t === 'bom' ? 'Stuklijst' : t === 'operations' ? 'Bewerkingen' : 'Geschiedenis'}
               {t === 'history' && history && (
                 <span className="ml-1.5 text-xs text-gray-400">({history.length})</span>
               )}
               {t === 'bom' && bom && (
                 <span className="ml-1.5 text-xs text-gray-400">({bom.length})</span>
+              )}
+              {t === 'operations' && operations && (
+                <span className="ml-1.5 text-xs text-gray-400">({operations.length})</span>
               )}
             </button>
           ))}
@@ -270,6 +312,17 @@ export default function ArticleDetailPage() {
                   />
                 </div>
                 <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Revisie</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={editForm.revision}
+                    onChange={e => setEditForm(f => ({ ...f, revision: e.target.value }))}
+                    className={inputClass}
+                    placeholder="A"
+                  />
+                </div>
+                <div className="space-y-1">
                   <label className="text-xs text-gray-500">Omschrijving</label>
                   <textarea
                     value={editForm.description}
@@ -286,6 +339,7 @@ export default function ArticleDetailPage() {
                 <Field label="Type" value={articleTypeLabel[article.articleType]} />
                 <Field label="Categorie" value={article.category} />
                 <Field label="Eenheid" value={article.unitOfMeasure} />
+                {article.revision && <Field label="Revisie" value={article.revision} mono />}
                 <Field
                   label="Inkoopprijs"
                   value={
@@ -431,6 +485,151 @@ export default function ArticleDetailPage() {
             {(!bom || bom.length === 0) && (
               <div className="px-4 py-8 text-center text-sm text-gray-500">
                 Geen componenten in stuklijst.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Operations tab */}
+      {tab === 'operations' && isManufactured && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              {operations?.length ?? 0} bewerking{operations?.length !== 1 ? 'en' : ''}
+            </p>
+            {article.isActive && (
+              <button
+                onClick={() => setShowAddOp(v => !v)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                {showAddOp ? 'Annuleren' : '+ Bewerking toevoegen'}
+              </button>
+            )}
+          </div>
+
+          {showAddOp && (
+            <form onSubmit={handleAddOp} className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+              <p className="text-sm font-medium text-gray-700">Bewerking toevoegen</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Volgordenummer *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={opForm.sequenceNumber}
+                    onChange={e => setOpForm(f => ({ ...f, sequenceNumber: e.target.value }))}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Bewerkingstype *</label>
+                  <select
+                    required
+                    value={opForm.operationTypeId}
+                    onChange={e => setOpForm(f => ({ ...f, operationTypeId: e.target.value }))}
+                    className={inputClass + ' bg-white'}
+                  >
+                    <option value="">— selecteer —</option>
+                    {operationTypes?.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}{t.isSubcontracted ? ' (uitbesteed)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Geschatte minuten</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={opForm.estimatedMinutes}
+                    onChange={e => setOpForm(f => ({ ...f, estimatedMinutes: e.target.value }))}
+                    className={inputClass}
+                    placeholder="30"
+                  />
+                </div>
+                <div className="space-y-1 flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={opForm.isConditional}
+                      onChange={e => setOpForm(f => ({ ...f, isConditional: e.target.checked }))}
+                      className="rounded border-gray-300"
+                    />
+                    Conditioneel
+                  </label>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <label className="text-xs text-gray-500">Notities</label>
+                  <input
+                    type="text"
+                    value={opForm.notes}
+                    onChange={e => setOpForm(f => ({ ...f, notes: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Optionele notities..."
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={addOp.isPending}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {addOp.isPending ? 'Toevoegen...' : 'Toevoegen'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-16">Seq</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Bewerkingstype</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Min.</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Notities</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {operations?.map(op => (
+                  <tr key={op.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-gray-500">{op.sequenceNumber}</td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <span>{op.operationTypeName}</span>
+                      {op.isSubcontracted && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">uitbesteed</span>
+                      )}
+                      {op.isConditional && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">conditioneel</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-gray-700">
+                      {op.estimatedMinutes != null ? op.estimatedMinutes : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{op.notes ?? '—'}</td>
+                    <td className="px-4 py-3 text-right">
+                      {article.isActive && (
+                        <button
+                          onClick={() => handleRemoveOp(op)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Verwijder
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(!operations || operations.length === 0) && (
+              <div className="px-4 py-8 text-center text-sm text-gray-500">
+                Geen bewerkingen in routetemplate.
               </div>
             )}
           </div>

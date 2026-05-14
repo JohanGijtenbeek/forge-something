@@ -16,7 +16,7 @@ public class ArticleRepository : IArticleRepository
     private const string ArticleSelect = @"
         SELECT a.id, a.article_number, a.code, a.name, a.article_type,
                a.description, a.category_id, a.unit_of_measure_id,
-               a.purchase_price, a.is_active, a.created_at, a.updated_at,
+               a.purchase_price, a.revision, a.is_active, a.created_at, a.updated_at,
                c.name AS category_name,
                u.abbreviation AS uom_abbreviation
         FROM mdata.articles a
@@ -52,7 +52,7 @@ public class ArticleRepository : IArticleRepository
 
             SELECT a.id, a.article_number, a.code, a.name, a.article_type,
                    a.description, a.category_id, a.unit_of_measure_id,
-                   a.purchase_price, a.is_active, a.created_at, a.updated_at,
+                   a.purchase_price, a.revision, a.is_active, a.created_at, a.updated_at,
                    c.name AS category_name,
                    u.abbreviation AS uom_abbreviation
             FROM mdata.articles a
@@ -82,14 +82,14 @@ public class ArticleRepository : IArticleRepository
         using var conn = _factory.Create();
         await conn.ExecuteAsync(@"
             INSERT INTO mdata.articles
-                (id, code, name, article_type, description, category_id, unit_of_measure_id, purchase_price, is_active, created_at, updated_at)
+                (id, code, name, article_type, description, category_id, unit_of_measure_id, purchase_price, revision, is_active, created_at, updated_at)
             VALUES
-                (@Id, @Code, @Name, @ArticleType, @Description, @CategoryId, @UnitOfMeasureId, @PurchasePrice, @IsActive, @CreatedAt, @UpdatedAt)",
+                (@Id, @Code, @Name, @ArticleType, @Description, @CategoryId, @UnitOfMeasureId, @PurchasePrice, @Revision, @IsActive, @CreatedAt, @UpdatedAt)",
             new
             {
                 article.Id, article.Code, article.Name, article.ArticleType,
                 article.Description, article.CategoryId, article.UnitOfMeasureId,
-                article.PurchasePrice, article.IsActive, article.CreatedAt, article.UpdatedAt
+                article.PurchasePrice, article.Revision, article.IsActive, article.CreatedAt, article.UpdatedAt
             });
     }
 
@@ -105,13 +105,14 @@ public class ArticleRepository : IArticleRepository
                 category_id        = @CategoryId,
                 unit_of_measure_id = @UnitOfMeasureId,
                 purchase_price     = @PurchasePrice,
+                revision           = @Revision,
                 updated_at         = @UpdatedAt
             WHERE id = @Id",
             new
             {
                 article.Id, article.Code, article.Name, article.ArticleType,
                 article.Description, article.CategoryId, article.UnitOfMeasureId,
-                article.PurchasePrice, article.UpdatedAt
+                article.PurchasePrice, article.Revision, article.UpdatedAt
             });
     }
 
@@ -248,6 +249,105 @@ public class ArticleRepository : IArticleRepository
             "UPDATE mdata.bill_of_materials SET is_active = 0 WHERE id = @Id",
             new { Id = bomLineId });
     }
+
+    public async Task<IReadOnlyList<ArticleOperation>> GetOperationsAsync(Guid articleId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<ArticleOperationRow>(@"
+            SELECT ao.id, ao.article_id, ao.sequence_number, ao.operation_type_id,
+                   ao.operation_type_name, ao.is_subcontracted,
+                   ao.estimated_minutes, ao.notes, ao.is_conditional, ao.is_active, ao.created_at
+            FROM mdata.article_operations ao
+            WHERE ao.article_id = @Id AND ao.is_active = 1
+            ORDER BY ao.sequence_number",
+            new { Id = articleId });
+        return rows.Select(r => r.ToDomain()).ToList();
+    }
+
+    public async Task<ArticleOperation?> GetOperationAsync(Guid operationId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var row = await conn.QuerySingleOrDefaultAsync<ArticleOperationRow>(@"
+            SELECT ao.id, ao.article_id, ao.sequence_number, ao.operation_type_id,
+                   ao.operation_type_name, ao.is_subcontracted,
+                   ao.estimated_minutes, ao.notes, ao.is_conditional, ao.is_active, ao.created_at
+            FROM mdata.article_operations ao
+            WHERE ao.id = @Id",
+            new { Id = operationId });
+        return row?.ToDomain();
+    }
+
+    public async Task AddOperationAsync(ArticleOperation op, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(@"
+            INSERT INTO mdata.article_operations
+                (id, article_id, sequence_number, operation_type_id, operation_type_name,
+                 is_subcontracted, estimated_minutes, notes, is_conditional, is_active, created_at)
+            VALUES
+                (@Id, @ArticleId, @SequenceNumber, @OperationTypeId, @OperationTypeName,
+                 @IsSubcontracted, @EstimatedMinutes, @Notes, @IsConditional, @IsActive, @CreatedAt)",
+            new
+            {
+                op.Id, op.ArticleId, op.SequenceNumber, op.OperationTypeId, op.OperationTypeName,
+                op.IsSubcontracted, op.EstimatedMinutes, op.Notes, op.IsConditional, op.IsActive, op.CreatedAt
+            });
+    }
+
+    public async Task UpdateOperationAsync(ArticleOperation op, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(@"
+            UPDATE mdata.article_operations
+            SET sequence_number   = @SequenceNumber,
+                estimated_minutes = @EstimatedMinutes,
+                notes             = @Notes,
+                is_conditional    = @IsConditional
+            WHERE id = @Id",
+            new { op.Id, op.SequenceNumber, op.EstimatedMinutes, op.Notes, op.IsConditional });
+    }
+
+    public async Task RemoveOperationAsync(Guid operationId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(
+            "UPDATE mdata.article_operations SET is_active = 0 WHERE id = @Id",
+            new { Id = operationId });
+    }
+
+    public async Task<IReadOnlyList<OperationType>> GetOperationTypesAsync(CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<OperationTypeRow>(@"
+            SELECT ot.id, ot.name, ot.is_subcontracted, ot.machine_type_id, ot.is_active,
+                   mt.name AS machine_type_name
+            FROM mdata.operation_types ot
+            LEFT JOIN mdata.machine_types mt ON mt.id = ot.machine_type_id
+            WHERE ot.is_active = 1
+            ORDER BY ot.name");
+        return rows.Select(r => r.ToDomain()).ToList();
+    }
+
+    public async Task<OperationType?> GetOperationTypeAsync(Guid id, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var row = await conn.QuerySingleOrDefaultAsync<OperationTypeRow>(@"
+            SELECT ot.id, ot.name, ot.is_subcontracted, ot.machine_type_id, ot.is_active,
+                   mt.name AS machine_type_name
+            FROM mdata.operation_types ot
+            LEFT JOIN mdata.machine_types mt ON mt.id = ot.machine_type_id
+            WHERE ot.id = @Id",
+            new { Id = id });
+        return row?.ToDomain();
+    }
+
+    public async Task<IReadOnlyList<MachineType>> GetMachineTypesAsync(CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<MachineTypeRow>(
+            "SELECT id, name, is_active FROM mdata.machine_types WHERE is_active = 1 ORDER BY name");
+        return rows.Select(r => r.ToDomain()).ToList();
+    }
 }
 
 // ============================================================
@@ -265,6 +365,7 @@ file record ArticleRow
     public Guid? CategoryId { get; init; }
     public Guid? UnitOfMeasureId { get; init; }
     public decimal? PurchasePrice { get; init; }
+    public string? Revision { get; init; }
     public bool IsActive { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
@@ -274,7 +375,7 @@ file record ArticleRow
     public Article ToDomain() => Article.Reconstitute(
         Id, ArticleNumber, Code, Name, ArticleType, Description,
         CategoryId, UnitOfMeasureId, PurchasePrice, IsActive, CreatedAt, UpdatedAt,
-        CategoryName, UomAbbreviation);
+        CategoryName, UomAbbreviation, Revision);
 }
 
 file record ArticleCategoryRow
@@ -320,4 +421,45 @@ file record BomLineRow
     public BomLine ToDomain() => BomLine.Reconstitute(
         Id, ParentArticleId, ChildArticleId, ChildCode, ChildName, ChildArticleType,
         Quantity, UnitOfMeasureId, UnitOfMeasureAbbreviation, SortOrder, IsActive);
+}
+
+file record ArticleOperationRow
+{
+    public Guid Id { get; init; }
+    public Guid ArticleId { get; init; }
+    public int SequenceNumber { get; init; }
+    public Guid OperationTypeId { get; init; }
+    public string OperationTypeName { get; init; } = "";
+    public bool IsSubcontracted { get; init; }
+    public decimal? EstimatedMinutes { get; init; }
+    public string? Notes { get; init; }
+    public bool IsConditional { get; init; }
+    public bool IsActive { get; init; }
+    public DateTime CreatedAt { get; init; }
+
+    public ArticleOperation ToDomain() => ArticleOperation.Reconstitute(
+        Id, ArticleId, SequenceNumber, OperationTypeId, OperationTypeName, IsSubcontracted,
+        EstimatedMinutes, Notes, IsConditional, IsActive, CreatedAt);
+}
+
+file record OperationTypeRow
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = "";
+    public bool IsSubcontracted { get; init; }
+    public Guid? MachineTypeId { get; init; }
+    public string? MachineTypeName { get; init; }
+    public bool IsActive { get; init; }
+
+    public OperationType ToDomain() =>
+        OperationType.Reconstitute(Id, Name, IsSubcontracted, MachineTypeId, MachineTypeName, IsActive);
+}
+
+file record MachineTypeRow
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = "";
+    public bool IsActive { get; init; }
+
+    public MachineType ToDomain() => MachineType.Reconstitute(Id, Name, IsActive);
 }

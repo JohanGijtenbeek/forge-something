@@ -30,6 +30,7 @@ public record ArticleDetailResponse(
     Guid? UnitOfMeasureId,
     string? UnitOfMeasure,
     decimal? PurchasePrice,
+    string? Revision,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -69,6 +70,32 @@ public record BomLineResponse(
     int SortOrder
 );
 
+public record ArticleOperationResponse(
+    Guid Id,
+    int SequenceNumber,
+    Guid OperationTypeId,
+    string OperationTypeName,
+    bool IsSubcontracted,
+    decimal? EstimatedMinutes,
+    string? Notes,
+    bool IsConditional
+);
+
+public record OperationTypeResponse(
+    Guid Id,
+    string Name,
+    bool IsSubcontracted,
+    Guid? MachineTypeId,
+    string? MachineTypeName,
+    bool IsActive
+);
+
+public record MachineTypeResponse(
+    Guid Id,
+    string Name,
+    bool IsActive
+);
+
 // ============================================================
 // REQUESTS
 // ============================================================
@@ -80,7 +107,8 @@ public record CreateArticleRequest(
     string? Description,
     Guid? CategoryId,
     Guid? UnitOfMeasureId,
-    decimal? PurchasePrice
+    decimal? PurchasePrice,
+    string? Revision = null
 );
 
 public record UpdateArticleRequest(
@@ -90,7 +118,8 @@ public record UpdateArticleRequest(
     string? Description,
     Guid? CategoryId,
     Guid? UnitOfMeasureId,
-    decimal? PurchasePrice
+    decimal? PurchasePrice,
+    string? Revision = null
 );
 
 public record CreateArticleCategoryRequest(
@@ -116,6 +145,21 @@ public record UpdateBomComponentRequest(
     int SortOrder
 );
 
+public record AddArticleOperationRequest(
+    int SequenceNumber,
+    Guid OperationTypeId,
+    decimal? EstimatedMinutes,
+    string? Notes,
+    bool IsConditional = false
+);
+
+public record UpdateArticleOperationRequest(
+    int SequenceNumber,
+    decimal? EstimatedMinutes,
+    string? Notes,
+    bool IsConditional
+);
+
 // ============================================================
 // MAPPER
 // ============================================================
@@ -127,9 +171,20 @@ public static class ArticleMapper
 
     public static ArticleDetailResponse ToDetailResponse(Article a) =>
         new(a.Id, a.ArticleNumber, a.Code, a.Name, a.ArticleType, a.Description,
-            a.CategoryId, a.CategoryName, a.UnitOfMeasureId, a.UomAbbreviation, a.PurchasePrice, a.IsActive, a.CreatedAt, a.UpdatedAt);
+            a.CategoryId, a.CategoryName, a.UnitOfMeasureId, a.UomAbbreviation, a.PurchasePrice,
+            a.Revision, a.IsActive, a.CreatedAt, a.UpdatedAt);
 
     public static BomLineResponse ToBomLineResponse(BomLine b) =>
         new(b.Id, b.ChildArticleId, b.ChildCode, b.ChildName, b.ChildArticleType,
             b.Quantity, b.UnitOfMeasureId, b.UnitOfMeasureAbbreviation, b.SortOrder);
+
+    public static ArticleOperationResponse ToOperationResponse(ArticleOperation op) =>
+        new(op.Id, op.SequenceNumber, op.OperationTypeId, op.OperationTypeName,
+            op.IsSubcontracted, op.EstimatedMinutes, op.Notes, op.IsConditional);
+
+    public static OperationTypeResponse ToOperationTypeResponse(OperationType ot) =>
+        new(ot.Id, ot.Name, ot.IsSubcontracted, ot.MachineTypeId, ot.MachineTypeName, ot.IsActive);
+
+    public static MachineTypeResponse ToMachineTypeResponse(MachineType mt) =>
+        new(mt.Id, mt.Name, mt.IsActive);
 }

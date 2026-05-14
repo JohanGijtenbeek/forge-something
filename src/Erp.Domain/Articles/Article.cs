@@ -11,6 +11,7 @@ public class Article
     public Guid? CategoryId { get; private set; }
     public Guid? UnitOfMeasureId { get; private set; }
     public decimal? PurchasePrice { get; private set; }
+    public string? Revision { get; private set; }
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
@@ -27,7 +28,7 @@ public class Article
     }
 
     public Article(string code, string name, string articleType, string? description,
-        Guid? categoryId, Guid? unitOfMeasureId, decimal? purchasePrice)
+        Guid? categoryId, Guid? unitOfMeasureId, decimal? purchasePrice, string? revision = null)
     {
         Id = Guid.NewGuid();
         Code = code;
@@ -37,13 +38,14 @@ public class Article
         CategoryId = categoryId;
         UnitOfMeasureId = unitOfMeasureId;
         PurchasePrice = purchasePrice;
+        Revision = revision;
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Update(string code, string name, string articleType, string? description,
-        Guid? categoryId, Guid? unitOfMeasureId, decimal? purchasePrice)
+        Guid? categoryId, Guid? unitOfMeasureId, decimal? purchasePrice, string? revision = null)
     {
         Code = code;
         Name = name;
@@ -52,6 +54,7 @@ public class Article
         CategoryId = categoryId;
         UnitOfMeasureId = unitOfMeasureId;
         PurchasePrice = purchasePrice;
+        Revision = revision;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -65,7 +68,7 @@ public class Article
         Guid id, int articleNumber, string code, string name, string articleType,
         string? description, Guid? categoryId, Guid? unitOfMeasureId,
         decimal? purchasePrice, bool isActive, DateTime createdAt, DateTime updatedAt,
-        string? categoryName = null, string? uomAbbreviation = null)
+        string? categoryName = null, string? uomAbbreviation = null, string? revision = null)
     {
         return new Article
         {
@@ -78,6 +81,7 @@ public class Article
             CategoryId = categoryId,
             UnitOfMeasureId = unitOfMeasureId,
             PurchasePrice = purchasePrice,
+            Revision = revision,
             IsActive = isActive,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,

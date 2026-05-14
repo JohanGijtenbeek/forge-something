@@ -9,7 +9,8 @@ public record CreateArticleCommand(
     string? Description,
     Guid? CategoryId,
     Guid? UnitOfMeasureId,
-    decimal? PurchasePrice
+    decimal? PurchasePrice,
+    string? Revision = null
 ) : IRequest<Guid>;
 
 public record UpdateArticleCommand(
@@ -20,7 +21,8 @@ public record UpdateArticleCommand(
     string? Description,
     Guid? CategoryId,
     Guid? UnitOfMeasureId,
-    decimal? PurchasePrice
+    decimal? PurchasePrice,
+    string? Revision = null
 ) : IRequest;
 
 public record DeactivateArticleCommand(
@@ -54,4 +56,25 @@ public record UpdateBomComponentCommand(
 
 public record RemoveBomComponentCommand(
     Guid BomLineId
+) : IRequest;
+
+public record AddArticleOperationCommand(
+    Guid ArticleId,
+    int SequenceNumber,
+    Guid OperationTypeId,
+    decimal? EstimatedMinutes,
+    string? Notes,
+    bool IsConditional
+) : IRequest<Guid>;
+
+public record UpdateArticleOperationCommand(
+    Guid OperationId,
+    int SequenceNumber,
+    decimal? EstimatedMinutes,
+    string? Notes,
+    bool IsConditional
+) : IRequest;
+
+public record RemoveArticleOperationCommand(
+    Guid OperationId
 ) : IRequest;

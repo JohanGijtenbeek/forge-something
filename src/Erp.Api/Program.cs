@@ -180,6 +180,8 @@ app.MapPartyEndpoints();
 app.MapArticleEndpoints();
 app.MapArticleCategoryEndpoints();
 app.MapUnitOfMeasureEndpoints();
+app.MapOperationTypeEndpoints();
+app.MapMachineTypeEndpoints();
 app.MapSearchEndpoints();
 
 app.Run();

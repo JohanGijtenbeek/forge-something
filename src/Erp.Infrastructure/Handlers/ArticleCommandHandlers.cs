@@ -22,7 +22,7 @@ public class CreateArticleHandler : IRequestHandler<CreateArticleCommand, Guid>
             throw new ArgumentException($"Invalid article type: {command.ArticleType}");
 
         var article = new Article(command.Code, command.Name, command.ArticleType,
-            command.Description, command.CategoryId, command.UnitOfMeasureId, command.PurchasePrice);
+            command.Description, command.CategoryId, command.UnitOfMeasureId, command.PurchasePrice, command.Revision);
 
         await _repository.AddAsync(article, ct);
 
@@ -53,7 +53,7 @@ public class UpdateArticleHandler : IRequestHandler<UpdateArticleCommand>
             ?? throw new KeyNotFoundException($"Article {command.ArticleId} not found.");
 
         article.Update(command.Code, command.Name, command.ArticleType,
-            command.Description, command.CategoryId, command.UnitOfMeasureId, command.PurchasePrice);
+            command.Description, command.CategoryId, command.UnitOfMeasureId, command.PurchasePrice, command.Revision);
 
         await _repository.UpdateAsync(article, ct);
 
@@ -180,5 +180,71 @@ public class RemoveBomComponentHandler : IRequestHandler<RemoveBomComponentComma
             ?? throw new KeyNotFoundException($"BOM line {command.BomLineId} not found.");
 
         await _repository.RemoveBomComponentAsync(command.BomLineId, ct);
+    }
+}
+
+public class AddArticleOperationHandler : IRequestHandler<AddArticleOperationCommand, Guid>
+{
+    private readonly IArticleRepository _repository;
+
+    public AddArticleOperationHandler(IArticleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<Guid> Handle(AddArticleOperationCommand command, CancellationToken ct)
+    {
+        var article = await _repository.GetByIdAsync(command.ArticleId, ct)
+            ?? throw new KeyNotFoundException($"Article {command.ArticleId} not found.");
+
+        if (article.ArticleType != ArticleType.Manufactured)
+            throw new InvalidOperationException("Operations can only be added to articles of type 'manufactured'.");
+
+        var opType = await _repository.GetOperationTypeAsync(command.OperationTypeId, ct)
+            ?? throw new KeyNotFoundException($"OperationType {command.OperationTypeId} not found.");
+
+        var op = new ArticleOperation(
+            command.ArticleId, command.SequenceNumber, opType.Id, opType.Name, opType.IsSubcontracted,
+            command.EstimatedMinutes, command.Notes, command.IsConditional);
+
+        await _repository.AddOperationAsync(op, ct);
+        return op.Id;
+    }
+}
+
+public class UpdateArticleOperationHandler : IRequestHandler<UpdateArticleOperationCommand>
+{
+    private readonly IArticleRepository _repository;
+
+    public UpdateArticleOperationHandler(IArticleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task Handle(UpdateArticleOperationCommand command, CancellationToken ct)
+    {
+        var op = await _repository.GetOperationAsync(command.OperationId, ct)
+            ?? throw new KeyNotFoundException($"ArticleOperation {command.OperationId} not found.");
+
+        op.Update(command.SequenceNumber, command.EstimatedMinutes, command.Notes, command.IsConditional);
+        await _repository.UpdateOperationAsync(op, ct);
+    }
+}
+
+public class RemoveArticleOperationHandler : IRequestHandler<RemoveArticleOperationCommand>
+{
+    private readonly IArticleRepository _repository;
+
+    public RemoveArticleOperationHandler(IArticleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task Handle(RemoveArticleOperationCommand command, CancellationToken ct)
+    {
+        _ = await _repository.GetOperationAsync(command.OperationId, ct)
+            ?? throw new KeyNotFoundException($"ArticleOperation {command.OperationId} not found.");
+
+        await _repository.RemoveOperationAsync(command.OperationId, ct);
     }
 }

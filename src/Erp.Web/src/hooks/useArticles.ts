@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { articleApi } from '../api/articles';
 import type { ArticlesParams, UpdateBomComponentRequest } from '../api/articles';
-import type { CreateArticleRequest, UpdateArticleRequest, AddBomComponentRequest } from '../types/api';
+import type {
+  CreateArticleRequest,
+  UpdateArticleRequest,
+  AddBomComponentRequest,
+  AddArticleOperationRequest,
+  UpdateArticleOperationRequest,
+} from '../types/api';
 
 export const articleKeys = {
   all: ['articles'] as const,
@@ -10,8 +16,10 @@ export const articleKeys = {
   detail: (id: string) => [...articleKeys.all, 'detail', id] as const,
   history: (id: string) => [...articleKeys.all, 'history', id] as const,
   bom: (id: string) => [...articleKeys.all, 'bom', id] as const,
+  operations: (id: string) => [...articleKeys.all, 'operations', id] as const,
   categories: () => [...articleKeys.all, 'categories'] as const,
   unitsOfMeasure: () => [...articleKeys.all, 'units-of-measure'] as const,
+  operationTypes: () => [...articleKeys.all, 'operation-types'] as const,
 };
 
 export const useArticles = (params: ArticlesParams = {}) =>
@@ -80,5 +88,35 @@ export const useRemoveBomComponent = (articleId: string) => {
   return useMutation({
     mutationFn: (lineId: string) => articleApi.removeBomComponent(articleId, lineId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: articleKeys.bom(articleId) }),
+  });
+};
+
+export const useArticleOperations = (id: string) =>
+  useQuery({ queryKey: articleKeys.operations(id), queryFn: () => articleApi.getOperations(id), enabled: !!id });
+
+export const useOperationTypes = () =>
+  useQuery({ queryKey: articleKeys.operationTypes(), queryFn: articleApi.getOperationTypes, staleTime: 1000 * 60 * 5 });
+
+export const useAddArticleOperation = (articleId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: AddArticleOperationRequest) => articleApi.addOperation(articleId, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: articleKeys.operations(articleId) }),
+  });
+};
+
+export const useUpdateArticleOperation = (articleId: string, opId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateArticleOperationRequest) => articleApi.updateOperation(articleId, opId, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: articleKeys.operations(articleId) }),
+  });
+};
+
+export const useRemoveArticleOperation = (articleId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (opId: string) => articleApi.removeOperation(articleId, opId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: articleKeys.operations(articleId) }),
   });
 };

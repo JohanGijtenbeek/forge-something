@@ -6,6 +6,11 @@ import type {
   ArticleCategoryResponse,
   UnitOfMeasureResponse,
   BomLineResponse,
+  ArticleOperationResponse,
+  AddArticleOperationRequest,
+  UpdateArticleOperationRequest,
+  OperationTypeResponse,
+  MachineTypeResponse,
   CreateArticleRequest,
   UpdateArticleRequest,
   AddBomComponentRequest,
@@ -63,4 +68,22 @@ export const articleApi = {
 
   getUnitsOfMeasure: () =>
     apiClient.get<UnitOfMeasureResponse[]>('/api/units-of-measure').then(r => r.data),
+
+  getOperations: (id: string) =>
+    apiClient.get<ArticleOperationResponse[]>(`/api/articles/${id}/operations`).then(r => r.data),
+
+  addOperation: (id: string, request: AddArticleOperationRequest) =>
+    apiClient.post<{ id: string }>(`/api/articles/${id}/operations`, request).then(r => r.data),
+
+  updateOperation: (id: string, opId: string, request: UpdateArticleOperationRequest) =>
+    apiClient.put(`/api/articles/${id}/operations/${opId}`, request),
+
+  removeOperation: (id: string, opId: string) =>
+    apiClient.delete(`/api/articles/${id}/operations/${opId}`),
+
+  getOperationTypes: () =>
+    apiClient.get<OperationTypeResponse[]>('/api/operation-types').then(r => r.data),
+
+  getMachineTypes: () =>
+    apiClient.get<MachineTypeResponse[]>('/api/machine-types').then(r => r.data),
 };
