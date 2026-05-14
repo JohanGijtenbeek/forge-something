@@ -67,6 +67,30 @@ public class ArticleGenerator
         ("GGG50",     "Nodulair gietijzer GGG50",       "Gietstuk/deel",    "kg",  1.40m),
     ];
 
+    private static readonly (string Code, string Name, string CategoryName, string Uom)[] ManufacturedParts =
+    [
+        ("ASM-FLENS-DN50",   "Flensdeel DN50",                "Koolstofstaal",    "st"),
+        ("ASM-FLENS-DN100",  "Flensdeel DN100",               "Koolstofstaal",    "st"),
+        ("ASM-FLENS-DN150",  "Flensdeel DN150",               "RVS",              "st"),
+        ("ASM-STEUN-A",      "Steunkonstruktie type A",       "Koolstofstaal",    "st"),
+        ("ASM-STEUN-B",      "Steunkonstruktie type B",       "Koolstofstaal",    "st"),
+        ("ASM-BEUGEL-M12",   "Beugel M12",                    "Koolstofstaal",    "st"),
+        ("ASM-BEUGEL-M16",   "Beugel M16",                    "Koolstofstaal",    "st"),
+        ("ASM-FRAME-001",    "Lasframe standaard",            "Koolstofstaal",    "st"),
+        ("ASM-FRAME-002",    "Lasframe zwaar",                "Koolstofstaal",    "st"),
+        ("ASM-AS-30",        "Gedraaide as Ø30mm",            "Koolstofstaal",    "st"),
+        ("ASM-AS-50",        "Gedraaide as Ø50mm",            "Koolstofstaal",    "st"),
+        ("ASM-BUSH-SS",      "RVS bus Ø40/30",                "RVS",              "st"),
+        ("ASM-RING-CNC",     "CNC-gefreesd ringdeel",         "Aluminium",        "st"),
+        ("ASM-PLAAT-LASER",  "Lasergestanst plaatdeel",       "Koolstofstaal",    "st"),
+        ("ASM-DEKSEL-RVS",   "RVS deksel 200×200",            "RVS",              "st"),
+        ("ASM-KOKER-SQ80",   "Gelaste kokerkonstruktie 80²",  "Koolstofstaal",    "st"),
+        ("ASM-HOUDER-ALU",   "Aluminium klemhouder",          "Aluminium",        "st"),
+        ("ASM-STEEK-TITAN",  "Titaan steekkoppeling",         "Titaan",           "st"),
+        ("ASM-PROFIEL-CNC",  "CNC-gefreesd profieldeel",      "Aluminium",        "st"),
+        ("ASM-CILINDER-PEN", "Cilindrische stelpen Ø20",      "Koolstofstaal",    "st"),
+    ];
+
     public ArticleGenerator(int seed)
     {
         _faker = new Faker("nl") { Random = new Randomizer(seed + 100) };
@@ -78,6 +102,32 @@ public class ArticleGenerator
         var uomMap = UnitsOfMeasure.ToDictionary(u => u.Abbreviation, u => u.Id);
         var articles = new List<ArticleSeedRow>();
 
+        // ~40% manufactured, rest raw_material — ensures order generation always has candidates
+        var manufacturedTarget = Math.Max(1, (int)Math.Ceiling(count * 0.4));
+
+        foreach (var (code, name, catName, uom) in ManufacturedParts)
+        {
+            if (articles.Count >= manufacturedTarget) break;
+            if (_usedCodes.Contains(code)) continue;
+
+            _usedCodes.Add(code);
+            categoryMap.TryGetValue(catName, out var categoryId);
+            uomMap.TryGetValue(uom, out var uomId);
+
+            articles.Add(new ArticleSeedRow(
+                Id: Guid.NewGuid(),
+                Code: code,
+                Name: name,
+                ArticleType: "manufactured",
+                Description: null,
+                CategoryId: categoryId == Guid.Empty ? null : categoryId,
+                UnitOfMeasureId: uomId == Guid.Empty ? null : uomId,
+                PurchasePrice: null,
+                IsActive: true
+            ));
+        }
+
+        // Fill remaining count with raw materials from the fixed list
         foreach (var (code, name, catName, uomAbbr, price) in Materials)
         {
             if (articles.Count >= count) break;
@@ -100,7 +150,7 @@ public class ArticleGenerator
             ));
         }
 
-        // Fill remaining with fabricated codes if count exceeds base list
+        // Fabricate any remaining articles needed beyond the fixed lists
         while (articles.Count < count)
         {
             var suffix = _faker.Random.Int(100, 9999);
