@@ -375,6 +375,120 @@ public class ApiWriter
         catch { return false; }
     }
 
+    public async Task<(int quotes, int errors)> WriteQuotesAsync(
+        List<Erp.Seeder.Models.QuoteSeedRow> quotes,
+        CancellationToken ct = default)
+    {
+        var errors = 0;
+        var completed = 0;
+
+        Console.WriteLine($"  → {quotes.Count} offertes via API...");
+
+        // Sequential: each quote needs its lines posted after the header
+        foreach (var quote in quotes)
+        {
+            var quoteId = await PostQuoteAsync(quote, ct);
+            if (quoteId is null)
+            {
+                errors++;
+                continue;
+            }
+
+            var lineOk = true;
+            var lineIds = new List<Guid>();
+            foreach (var line in quote.Lines)
+            {
+                var lineId = await PostQuoteLineAsync(quoteId.Value, line, ct);
+                if (lineId is null) { lineOk = false; break; }
+                if (line.ShouldAccept) lineIds.Add(lineId.Value);
+            }
+
+            if (!lineOk) { errors++; continue; }
+
+            foreach (var lineId in lineIds)
+                await AcceptQuoteLineAsync(quoteId.Value, lineId, ct);
+
+            if (quote.TargetStatus != "draft")
+                await UpdateQuoteStatusAsync(quoteId.Value, quote.TargetStatus, ct);
+
+            completed++;
+            Console.Write($"\r  {completed}/{quotes.Count} offertes aangemaakt...");
+        }
+
+        Console.WriteLine();
+        return (completed, errors);
+    }
+
+    private async Task<Guid?> PostQuoteAsync(Erp.Seeder.Models.QuoteSeedRow quote, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync("/api/quotes", new
+            {
+                customerId     = quote.CustomerId,
+                date           = quote.Date,
+                reference      = quote.Reference,
+                contactPerson  = quote.ContactPerson,
+                deliveryTime   = quote.DeliveryTime,
+                hourlyRate     = quote.HourlyRate,
+                materialMargin = quote.MaterialMargin,
+                standardMargin = quote.StandardMargin,
+                setupTime      = quote.SetupTime,
+            }, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<IdResponse>(ct);
+            return result?.Id;
+        }
+        catch { return null; }
+    }
+
+    private async Task<Guid?> PostQuoteLineAsync(Guid quoteId, Erp.Seeder.Models.QuoteLineSeedRow line, CancellationToken ct)
+    {
+        try
+        {
+            var response = await _client.PostAsJsonAsync($"/api/quotes/{quoteId}/lines", new
+            {
+                sortOrder            = line.SortOrder,
+                partName             = line.PartName,
+                partNumber           = line.PartNumber,
+                quantity             = line.Quantity,
+                articleId            = (Guid?)null,
+                materialType         = line.MaterialType,
+                materialCode         = line.MaterialCode,
+                materialCode2        = line.MaterialCode2,
+                materialGeometry     = line.MaterialGeometry,
+                materialSizeMm       = line.MaterialSizeMm,
+                materialLengthMm     = line.MaterialLengthMm,
+                materialQuantity     = line.MaterialQuantity,
+                materialPrice        = line.MaterialPrice,
+                materialSource       = line.MaterialSource,
+                operationCount       = line.OperationCount,
+                operationTimeMinutes = line.OperationTimeMinutes,
+                subcontractingCount  = line.SubcontractingCount,
+                subcontractingPrice  = line.SubcontractingPrice,
+                isManualPrice        = line.IsManualPrice,
+                manualPrice          = line.ManualPrice,
+                remarks              = (string?)null,
+            }, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<IdResponse>(ct);
+            return result?.Id;
+        }
+        catch { return null; }
+    }
+
+    private async Task AcceptQuoteLineAsync(Guid quoteId, Guid lineId, CancellationToken ct)
+    {
+        try { await _client.PutAsync($"/api/quotes/{quoteId}/lines/{lineId}/accept", null, ct); }
+        catch { /* best effort */ }
+    }
+
+    private async Task UpdateQuoteStatusAsync(Guid quoteId, string status, CancellationToken ct)
+    {
+        try { await _client.PutAsJsonAsync($"/api/quotes/{quoteId}/status", new { status }, ct); }
+        catch { /* best effort */ }
+    }
+
     private record IdResponse(Guid Id);
     private record ArticleItem(Guid Id, string Code, string Name, string ArticleType, string? UnitOfMeasure);
     private record OperationTypeItem(Guid Id, string Name, bool IsSubcontracted);

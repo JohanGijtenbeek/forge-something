@@ -21,6 +21,7 @@ var orgCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Organizations", 
 var personCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Persons", 50);
 var articleCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Articles", 10);
 var orderCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Orders", 25);
+var quoteCount = config.GetValue<int>($"Seeder:Profiles:{profile}:Quotes", 15);
 
 Console.WriteLine($"""
                    ════════════════════════════════════════
@@ -29,6 +30,8 @@ Console.WriteLine($"""
                      Organisaties:  {orgCount}
                      Personen:      {personCount}
                      Artikelen:     {articleCount}
+                     Orders:        {orderCount}
+                     Offertes:      {quoteCount}
                      Seed:          {seed}
                      API:           {apiUrl}
                    ════════════════════════════════════════
@@ -37,6 +40,7 @@ Console.WriteLine($"""
 var generator = new PartyGenerator(seed);
 var articleGenerator = new ArticleGenerator(seed);
 var orderGenerator = new OrderGenerator(seed, apiUrl);
+var quoteGenerator = new QuoteGenerator(seed, apiUrl);
 var dbWriter = new DatabaseWriter(connectionString);
 var msWriter = new MeilisearchWriter(meilisearchUrl, meilisearchKey);
 var apiWriter = new ApiWriter(apiUrl, generator);
@@ -97,6 +101,11 @@ Console.WriteLine("\nOrders...");
 var orderSeedRows = await orderGenerator.GenerateAsync(orderCount);
 var (ordersDone, orderErrors) = await apiWriter.WriteOrdersAsync(orderSeedRows);
 
+// Offertes via API-pipeline
+Console.WriteLine("\nOffertes...");
+var quoteSeedRows = await quoteGenerator.GenerateAsync(quoteCount);
+var (quotesDone, quoteErrors) = await apiWriter.WriteQuotesAsync(quoteSeedRows);
+
 stopwatch.Stop();
 
 Console.WriteLine($"""
@@ -110,6 +119,7 @@ Console.WriteLine($"""
                      Relaties:         {relationships}
                      Artikelen:        {articlesDone}
                      Orders:           {ordersDone}
-                     Fouten:           {errors + articleErrors + enrichErrors + orderErrors}
+                     Offertes:         {quotesDone}
+                     Fouten:           {errors + articleErrors + enrichErrors + orderErrors + quoteErrors}
                    ════════════════════════════════════════
                    """);

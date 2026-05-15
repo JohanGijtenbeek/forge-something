@@ -120,3 +120,43 @@ public record OrderSeedRow(
     DateOnly? DueDate,
     string? Notes
 );
+
+// ── Quotes ────────────────────────────────────────────────────────────────
+
+public record QuoteSeedRow(
+    Guid?    CustomerId,
+    string?  CustomerName,
+    DateOnly Date,
+    string?  Reference,
+    string?  ContactPerson,
+    string?  DeliveryTime,
+    decimal  HourlyRate,
+    decimal  MaterialMargin,
+    decimal  StandardMargin,
+    decimal  SetupTime,
+    string   TargetStatus,
+    List<QuoteLineSeedRow> Lines
+);
+
+public record QuoteLineSeedRow(
+    int      SortOrder,
+    string   PartName,
+    string   PartNumber,
+    decimal  Quantity,
+    string?  MaterialType,
+    string?  MaterialCode,
+    string?  MaterialCode2,
+    string?  MaterialGeometry,
+    decimal? MaterialSizeMm,
+    decimal? MaterialLengthMm,
+    decimal? MaterialQuantity,
+    decimal? MaterialPrice,
+    string   MaterialSource,
+    int      OperationCount,
+    decimal  OperationTimeMinutes,
+    int      SubcontractingCount,
+    decimal  SubcontractingPrice,
+    bool     IsManualPrice,
+    decimal? ManualPrice,
+    bool     ShouldAccept
+);
