@@ -214,6 +214,23 @@ PUT    /api/orders/{id}/status
 DELETE /api/orders/{id}            -- cancel (soft delete)
 ```
 
+### Quotes
+
+```
+GET    /api/quotes?page&pageSize&search&status
+GET    /api/quotes/{id}
+GET    /api/quotes/{id}/history
+POST   /api/quotes
+PUT    /api/quotes/{id}
+PUT    /api/quotes/{id}/status
+DELETE /api/quotes/{id}            -- soft delete (status→rejected)
+POST   /api/quotes/{id}/lines
+PUT    /api/quotes/{id}/lines/{lineId}
+DELETE /api/quotes/{id}/lines/{lineId}
+PUT    /api/quotes/{id}/lines/{lineId}/accept
+POST   /api/quotes/{id}/convert    -- convert accepted lines to production orders
+```
+
 ### Search
 
 ```
@@ -324,6 +341,9 @@ release/0.1.0
 
 - [x] Articles domain
 - [x] Orders domain
+- [x] Quote domain (bare-bones; material catalog and copy-from-order deferred)
+- [ ] Material catalog (deferred from quote domain)
+- [ ] Copy-from-order (deferred from quote domain — design separately)
 - [ ] Auth (IdentityServer or Keycloak)
 - [ ] Add/edit addresses and contact methods via UI
 - [ ] Pagination on list endpoints
