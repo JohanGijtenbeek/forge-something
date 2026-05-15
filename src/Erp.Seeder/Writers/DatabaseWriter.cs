@@ -23,6 +23,8 @@ public class DatabaseWriter
 
         // Volgorde belangrijk vanwege foreign keys
         // audit (child tables first, event_log last)
+        await conn.ExecuteAsync("DELETE FROM audit.quote_snapshots");
+        await conn.ExecuteAsync("DELETE FROM audit.quote_history");
         await conn.ExecuteAsync("DELETE FROM audit.order_snapshots");
         await conn.ExecuteAsync("DELETE FROM audit.order_history");
         await conn.ExecuteAsync("DELETE FROM audit.article_history");
@@ -30,10 +32,13 @@ public class DatabaseWriter
         await conn.ExecuteAsync("DELETE FROM audit.party_history");
         await conn.ExecuteAsync("DELETE FROM audit.party_snapshots");
         await conn.ExecuteAsync("DELETE FROM audit.event_log");
-        // orders (child tables before production_orders, production_orders before articles/parties)
+        // orders (child tables before production_orders, production_orders before articles/parties/quotes)
         await conn.ExecuteAsync("DELETE FROM mdata.order_bom_lines");
         await conn.ExecuteAsync("DELETE FROM mdata.order_operations");
         await conn.ExecuteAsync("DELETE FROM mdata.production_orders");
+        // quotes (lines before quotes)
+        await conn.ExecuteAsync("DELETE FROM mdata.quote_lines");
+        await conn.ExecuteAsync("DELETE FROM mdata.quotes");
         // articles (operations and bom before articles, categories/uom last)
         await conn.ExecuteAsync("DELETE FROM mdata.article_operations");
         await conn.ExecuteAsync("DELETE FROM mdata.bill_of_materials");
@@ -56,6 +61,7 @@ public class DatabaseWriter
         await conn.ExecuteAsync("ALTER SEQUENCE mdata.seq_supplier_number RESTART WITH 1000");
         await conn.ExecuteAsync("ALTER SEQUENCE mdata.seq_article_number RESTART WITH 1000");
         await conn.ExecuteAsync("ALTER SEQUENCE mdata.seq_order_number RESTART WITH 1000");
+        await conn.ExecuteAsync("ALTER SEQUENCE mdata.seq_quote_number RESTART WITH 1000");
 
         Console.WriteLine("  ✓ Database leeg");
     }

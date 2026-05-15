@@ -168,6 +168,17 @@ export default function OrderDetailPage() {
           <Section title="Systeemgegevens">
             <Field label="Aangemaakt" value={new Date(order.createdAt).toLocaleString('nl-NL')} />
             <Field label="Bijgewerkt" value={new Date(order.updatedAt).toLocaleString('nl-NL')} />
+            {order.quoteId && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Offerte</span>
+                <Link
+                  to={`/quotes/${order.quoteId}`}
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Bekijk offerte →
+                </Link>
+              </div>
+            )}
           </Section>
         </div>
       )}

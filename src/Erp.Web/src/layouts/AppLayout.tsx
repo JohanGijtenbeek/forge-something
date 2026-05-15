@@ -8,6 +8,7 @@ const navigation = [
   { name: 'Leveranciers', href: '/parties/suppliers' },
   { name: 'Artikelen', href: '/articles' },
   { name: 'Orders', href: '/orders' },
+  { name: 'Offertes', href: '/quotes' },
   { name: 'Live Events', href: '/events' },
 ];
 

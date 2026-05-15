@@ -12,6 +12,8 @@ public interface ISearchService
     Task DeleteArticleAsync(string id);
     Task IndexOrderAsync(OrderSearchDocument document);
     Task DeleteOrderAsync(string id);
+    Task IndexQuoteAsync(QuoteSearchDocument document);
+    Task DeleteQuoteAsync(string id);
     Task InitializeAsync();
     Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default);
 }

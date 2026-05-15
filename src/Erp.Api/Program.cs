@@ -2,6 +2,7 @@ using Erp.Api.Endpoints;
 using Erp.Domain.Articles;
 using Erp.Domain.Orders;
 using Erp.Domain.Parties;
+using Erp.Domain.Quotes;
 using Erp.Domain.Search;
 using Erp.Infrastructure.Handlers;
 using Erp.Infrastructure.Maintenance;
@@ -103,6 +104,7 @@ builder.Services.AddSingleton<DbConnectionFactory>();
 builder.Services.AddScoped<IPartyRepository, PartyRepository>();
 builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
@@ -181,6 +183,7 @@ using (var startupScope = app.Services.CreateScope())
 app.MapPartyEndpoints();
 app.MapArticleEndpoints();
 app.MapOrderEndpoints();
+app.MapQuoteEndpoints();
 app.MapArticleCategoryEndpoints();
 app.MapUnitOfMeasureEndpoints();
 app.MapOperationTypeEndpoints();

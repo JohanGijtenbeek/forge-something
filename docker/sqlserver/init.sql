@@ -735,3 +735,140 @@ GO
 
 PRINT 'Orders schema succesvol geladen.';
 GO
+
+-- ============================================================
+-- QUOTES DOMAIN
+-- ============================================================
+
+-- Quote number sequence
+IF NOT EXISTS (SELECT * FROM sys.sequences seq JOIN sys.schemas s ON seq.schema_id = s.schema_id WHERE s.name = 'mdata' AND seq.name = 'seq_quote_number')
+    CREATE SEQUENCE mdata.seq_quote_number AS INT START WITH 1000 INCREMENT BY 1;
+GO
+
+-- Quotes
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'quotes')
+BEGIN
+    CREATE TABLE mdata.quotes (
+        id                  UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        quote_number        INT                 NOT NULL DEFAULT NEXT VALUE FOR mdata.seq_quote_number,
+        customer_id         UNIQUEIDENTIFIER    NULL,
+        customer_name       NVARCHAR(200)       NULL,
+        date                DATE                NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+        reference           NVARCHAR(200)       NULL,
+        contact_person      NVARCHAR(200)       NULL,
+        delivery_time       NVARCHAR(100)       NULL,
+        hourly_rate         DECIMAL(10,2)       NOT NULL DEFAULT 72,
+        material_margin     DECIMAL(5,2)        NOT NULL DEFAULT 115,
+        standard_margin     DECIMAL(5,2)        NOT NULL DEFAULT 11,
+        setup_time          DECIMAL(8,2)        NOT NULL DEFAULT 1,
+        status              NVARCHAR(20)        NOT NULL DEFAULT 'draft',
+        remarks             NVARCHAR(MAX)       NULL,
+        created_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        updated_at          DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_quotes                PRIMARY KEY (id),
+        CONSTRAINT uq_quotes_number         UNIQUE (quote_number),
+        CONSTRAINT chk_quotes_status        CHECK (status IN ('draft','sent','accepted','rejected')),
+        CONSTRAINT fk_quotes_customer       FOREIGN KEY (customer_id) REFERENCES mdata.parties(id)
+    );
+
+    CREATE INDEX ix_quotes_status      ON mdata.quotes (status);
+    CREATE INDEX ix_quotes_customer_id ON mdata.quotes (customer_id);
+    CREATE INDEX ix_quotes_created_at  ON mdata.quotes (created_at DESC);
+END
+GO
+
+-- Quote lines
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'mdata' AND t.name = 'quote_lines')
+BEGIN
+    CREATE TABLE mdata.quote_lines (
+        id                      UNIQUEIDENTIFIER    NOT NULL DEFAULT NEWSEQUENTIALID(),
+        quote_id                UNIQUEIDENTIFIER    NOT NULL,
+        sort_order              INT                 NOT NULL DEFAULT 0,
+        part_name               NVARCHAR(200)       NOT NULL,
+        part_number             NVARCHAR(100)       NOT NULL,
+        quantity                DECIMAL(12,4)       NOT NULL,
+        article_id              UNIQUEIDENTIFIER    NULL,
+        -- Material (denormalized — material catalog deferred to later iteration)
+        material_type           NVARCHAR(100)       NULL,
+        material_code           NVARCHAR(50)        NULL,
+        material_code2          NVARCHAR(100)       NULL,
+        material_geometry       NVARCHAR(50)        NULL,
+        material_size_mm        DECIMAL(10,3)       NULL,
+        material_length_mm      DECIMAL(10,3)       NULL,
+        material_quantity       DECIMAL(12,4)       NULL,
+        material_price          DECIMAL(18,4)       NULL,
+        material_source         NVARCHAR(20)        NOT NULL DEFAULT 'inclusive',
+        -- Operations
+        operation_count         INT                 NOT NULL DEFAULT 0,
+        operation_time_minutes  DECIMAL(10,2)       NOT NULL DEFAULT 0,
+        -- Subcontracting
+        subcontracting_count    INT                 NOT NULL DEFAULT 0,
+        subcontracting_price    DECIMAL(18,4)       NOT NULL DEFAULT 0,
+        -- Pricing
+        total_price_per_unit    DECIMAL(18,4)       NULL,
+        is_manual_price         BIT                 NOT NULL DEFAULT 0,
+        manual_price            DECIMAL(18,4)       NULL,
+        is_accepted             BIT                 NOT NULL DEFAULT 0,
+        remarks                 NVARCHAR(1000)      NULL,
+        CONSTRAINT pk_quote_lines               PRIMARY KEY (id),
+        CONSTRAINT chk_quote_lines_source       CHECK (material_source IN ('inclusive','customer')),
+        CONSTRAINT fk_quote_lines_quote         FOREIGN KEY (quote_id)    REFERENCES mdata.quotes(id),
+        CONSTRAINT fk_quote_lines_article       FOREIGN KEY (article_id)  REFERENCES mdata.articles(id)
+    );
+
+    CREATE INDEX ix_quote_lines_quote_id   ON mdata.quote_lines (quote_id);
+    CREATE INDEX ix_quote_lines_article_id ON mdata.quote_lines (article_id) WHERE article_id IS NOT NULL;
+END
+GO
+
+-- Quote history (materialized for UI)
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'quote_history')
+BEGIN
+    CREATE TABLE audit.quote_history (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        quote_id        UNIQUEIDENTIFIER    NOT NULL,
+        event_sequence  BIGINT              NOT NULL,
+        event_type      NVARCHAR(200)       NOT NULL,
+        summary         NVARCHAR(500)       NOT NULL,
+        changed_by      NVARCHAR(200)       NOT NULL DEFAULT 'system',
+        changed_at      DATETIME2           NOT NULL,
+        snapshot        NVARCHAR(MAX)       NULL,
+        CONSTRAINT pk_quote_history         PRIMARY KEY (id),
+        CONSTRAINT fk_quote_history_event   FOREIGN KEY (event_sequence) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_quote_history_quote_id   ON audit.quote_history (quote_id, changed_at DESC);
+    CREATE INDEX ix_quote_history_changed_at ON audit.quote_history (changed_at DESC);
+END
+GO
+
+-- Quote snapshots
+IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'audit' AND t.name = 'quote_snapshots')
+BEGIN
+    CREATE TABLE audit.quote_snapshots (
+        id              BIGINT              NOT NULL IDENTITY(1,1),
+        quote_id        UNIQUEIDENTIFIER    NOT NULL,
+        at_event_id     BIGINT              NOT NULL,
+        snapshot        NVARCHAR(MAX)       NOT NULL,
+        trigger_reason  NVARCHAR(50)        NOT NULL,
+        created_at      DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT pk_quote_snapshots           PRIMARY KEY (id),
+        CONSTRAINT fk_quote_snapshots_event     FOREIGN KEY (at_event_id) REFERENCES audit.event_log(id)
+    );
+
+    CREATE INDEX ix_quote_snapshots_quote_id ON audit.quote_snapshots (quote_id, at_event_id DESC);
+END
+GO
+
+-- Migration: add quote_id to production_orders
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('mdata.production_orders') AND name = 'quote_id')
+BEGIN
+    ALTER TABLE mdata.production_orders ADD quote_id UNIQUEIDENTIFIER NULL;
+    ALTER TABLE mdata.production_orders ADD CONSTRAINT fk_production_orders_quote
+        FOREIGN KEY (quote_id) REFERENCES mdata.quotes(id);
+    CREATE INDEX ix_production_orders_quote_id ON mdata.production_orders (quote_id) WHERE quote_id IS NOT NULL;
+END
+GO
+
+PRINT 'Quotes schema succesvol geladen.';
+GO
