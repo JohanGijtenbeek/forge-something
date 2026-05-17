@@ -861,13 +861,17 @@ END
 GO
 
 -- Migration: add quote_id to production_orders
+-- NOTE: CREATE INDEX is in a separate GO batch to avoid SQL Server compile-time column validation failure.
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('mdata.production_orders') AND name = 'quote_id')
 BEGIN
     ALTER TABLE mdata.production_orders ADD quote_id UNIQUEIDENTIFIER NULL;
     ALTER TABLE mdata.production_orders ADD CONSTRAINT fk_production_orders_quote
         FOREIGN KEY (quote_id) REFERENCES mdata.quotes(id);
-    CREATE INDEX ix_production_orders_quote_id ON mdata.production_orders (quote_id) WHERE quote_id IS NOT NULL;
 END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID('mdata.production_orders') AND name = 'ix_production_orders_quote_id')
+    CREATE INDEX ix_production_orders_quote_id ON mdata.production_orders (quote_id) WHERE quote_id IS NOT NULL;
 GO
 
 PRINT 'Quotes schema succesvol geladen.';
