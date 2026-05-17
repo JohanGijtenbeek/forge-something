@@ -14,6 +14,7 @@ public class MeilisearchService : ISearchService
     private const string PartiesIndex = "parties";
     private const string ArticlesIndex = "articles";
     private const string OrdersIndex = "orders";
+    private const string QuotesIndex = "quotes";
 
     public MeilisearchService(IConfiguration config, ILogger<MeilisearchService> logger)
     {
@@ -30,6 +31,7 @@ public class MeilisearchService : ISearchService
         await EnsureIndexAsync(PartiesIndex, "id", ["name", "city", "email", "phone"]);
         await EnsureIndexAsync(ArticlesIndex, "id", ["code", "name", "category"]);
         await EnsureIndexAsync(OrdersIndex, "id", ["orderNumber", "articleCode", "articleName", "customerName"]);
+        await EnsureIndexAsync(QuotesIndex, "id", ["quoteNumber", "customerName"]);
     }
 
     public async Task<int> ReindexPartiesAsync(IPartyRepository repository, CancellationToken ct = default)
@@ -128,6 +130,17 @@ public class MeilisearchService : ISearchService
             _logger.LogError(ex, "Zoeken mislukt in '{Index}'", OrdersIndex);
         }
 
+        try
+        {
+            var index = _client.Index(QuotesIndex);
+            var hits = await index.SearchAsync<QuoteSearchDocument>(query, new SearchQuery { Limit = limit });
+            results.AddRange(hits.Hits.Select(q => new SearchResult(q.Id, q.EntityType, q.DisplayLabel, q.Status)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Zoeken mislukt in '{Index}'", QuotesIndex);
+        }
+
         return results;
     }
 
@@ -212,6 +225,49 @@ public class MeilisearchService : ISearchService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Verwijderen mislukt voor order '{Id}'", id);
+        }
+    }
+
+    public async Task IndexQuoteAsync(QuoteSearchDocument document)
+    {
+        try
+        {
+            var index = _client.Index(QuotesIndex);
+            var task = await index.AddDocumentsAsync(new[] { document });
+            _logger.LogInformation("Quote '{Id}' geïndexeerd (taskUid={Uid})", document.Id, task.TaskUid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Indexeren mislukt voor quote '{Id}'", document.Id);
+        }
+    }
+
+    public async Task DeleteQuoteAsync(string id)
+    {
+        try
+        {
+            var index = _client.Index(QuotesIndex);
+            await index.DeleteOneDocumentAsync(id);
+            _logger.LogInformation("Quote '{Id}' verwijderd uit index", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Verwijderen mislukt voor quote '{Id}'", id);
+        }
+    }
+
+    public async Task<IEnumerable<SearchResult>> GlobalSearchQuotesAsync(string query, int limit)
+    {
+        try
+        {
+            var index = _client.Index(QuotesIndex);
+            var hits = await index.SearchAsync<QuoteSearchDocument>(query, new SearchQuery { Limit = limit });
+            return hits.Hits.Select(q => new SearchResult(q.Id, q.EntityType, q.DisplayLabel, q.Status));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Zoeken mislukt in '{Index}'", QuotesIndex);
+            return [];
         }
     }
 }

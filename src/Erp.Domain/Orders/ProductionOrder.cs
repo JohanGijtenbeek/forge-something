@@ -15,6 +15,7 @@ public class ProductionOrder
     public string Status { get; private set; }
     public DateOnly? DueDate { get; private set; }
     public string? Notes { get; private set; }
+    public Guid? QuoteId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -28,7 +29,8 @@ public class ProductionOrder
 
     public ProductionOrder(int orderNumber, Guid articleId, string articleCode,
         string articleName, string? articleRevision, Guid? customerId, string? customerName,
-        decimal quantity, string unitOfMeasure, DateOnly? dueDate, string? notes)
+        decimal quantity, string unitOfMeasure, DateOnly? dueDate, string? notes,
+        Guid? quoteId = null)
     {
         Id = Guid.NewGuid();
         OrderNumber = orderNumber;
@@ -43,6 +45,7 @@ public class ProductionOrder
         Status = OrderStatus.Draft;
         DueDate = dueDate;
         Notes = notes;
+        QuoteId = quoteId;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -60,7 +63,7 @@ public class ProductionOrder
         Guid id, int orderNumber, Guid articleId, string articleCode,
         string articleName, string? articleRevision, Guid? customerId, string? customerName,
         decimal quantity, string unitOfMeasure, string status, DateOnly? dueDate,
-        string? notes, DateTime createdAt, DateTime updatedAt) =>
+        string? notes, DateTime createdAt, DateTime updatedAt, Guid? quoteId = null) =>
         new()
         {
             Id = id,
@@ -76,6 +79,7 @@ public class ProductionOrder
             Status = status,
             DueDate = dueDate,
             Notes = notes,
+            QuoteId = quoteId,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         };

@@ -33,6 +33,7 @@ public record OrderDetailResponse(
     string Status,
     DateOnly? DueDate,
     string? Notes,
+    Guid? QuoteId,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     IEnumerable<OrderBomLineResponse> BomLines,
@@ -109,7 +110,7 @@ public static class OrderMapper
         IEnumerable<OrderOperation> ops) =>
         new(o.Id, o.OrderNumber, o.ArticleId, o.ArticleCode, o.ArticleName, o.ArticleRevision,
             o.CustomerId, o.CustomerName, o.Quantity, o.UnitOfMeasure, o.Status,
-            o.DueDate, o.Notes, o.CreatedAt, o.UpdatedAt,
+            o.DueDate, o.Notes, o.QuoteId, o.CreatedAt, o.UpdatedAt,
             bom.Select(ToBomLineResponse),
             ops.Select(ToOperationResponse));
 }

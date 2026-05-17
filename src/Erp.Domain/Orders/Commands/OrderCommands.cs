@@ -8,7 +8,8 @@ public record CreateProductionOrderCommand(
     decimal Quantity,
     string UnitOfMeasure,
     DateOnly? DueDate,
-    string? Notes
+    string? Notes,
+    Guid? QuoteId = null
 ) : IRequest<Guid>;
 
 public record UpdateOrderStatusCommand(

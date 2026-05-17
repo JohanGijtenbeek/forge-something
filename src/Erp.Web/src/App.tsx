@@ -14,6 +14,8 @@ import CreateArticlePage from './pages/articles/CreateArticlePage';
 import OrdersPage from './pages/orders/OrdersPage';
 import OrderDetailPage from './pages/orders/OrderDetailPage';
 import CreateOrderPage from './pages/orders/CreateOrderPage';
+import QuotesPage from './pages/quotes/QuotesPage';
+import QuoteDetailPage from './pages/quotes/QuoteDetailPage';
 
 const router = createBrowserRouter([
   {
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
       { path: 'orders', element: <OrdersPage /> },
       { path: 'orders/create', element: <CreateOrderPage /> },
       { path: 'orders/:id', element: <OrderDetailPage /> },
+      { path: 'quotes', element: <QuotesPage /> },
+      { path: 'quotes/:id', element: <QuoteDetailPage /> },
     ],
   },
 ]);

@@ -16,7 +16,7 @@ public class OrderRepository : IOrderRepository
     private const string OrderSelect = @"
         SELECT id, order_number, article_id, article_code, article_name, article_revision,
                customer_id, customer_name, quantity, unit_of_measure, status,
-               due_date, notes, created_at, updated_at
+               due_date, notes, quote_id, created_at, updated_at
         FROM mdata.production_orders";
 
     public async Task<ProductionOrder?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -76,17 +76,17 @@ public class OrderRepository : IOrderRepository
                 INSERT INTO mdata.production_orders
                     (id, order_number, article_id, article_code, article_name, article_revision,
                      customer_id, customer_name, quantity, unit_of_measure, status,
-                     due_date, notes, created_at, updated_at)
+                     due_date, notes, quote_id, created_at, updated_at)
                 VALUES
                     (@Id, @OrderNumber, @ArticleId, @ArticleCode, @ArticleName, @ArticleRevision,
                      @CustomerId, @CustomerName, @Quantity, @UnitOfMeasure, @Status,
-                     @DueDate, @Notes, @CreatedAt, @UpdatedAt)",
+                     @DueDate, @Notes, @QuoteId, @CreatedAt, @UpdatedAt)",
                 new
                 {
                     order.Id, order.OrderNumber, order.ArticleId, order.ArticleCode,
                     order.ArticleName, order.ArticleRevision, order.CustomerId, order.CustomerName,
                     order.Quantity, order.UnitOfMeasure, order.Status,
-                    order.DueDate, order.Notes, order.CreatedAt, order.UpdatedAt
+                    order.DueDate, order.Notes, order.QuoteId, order.CreatedAt, order.UpdatedAt
                 }, tx);
 
             if (bom.Count > 0)
@@ -193,13 +193,14 @@ file record OrderRow
     public string Status { get; init; } = "";
     public DateOnly? DueDate { get; init; }
     public string? Notes { get; init; }
+    public Guid? QuoteId { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
     public ProductionOrder ToDomain() => ProductionOrder.Reconstitute(
         Id, OrderNumber, ArticleId, ArticleCode, ArticleName, ArticleRevision,
         CustomerId, CustomerName, Quantity, UnitOfMeasure, Status,
-        DueDate, Notes, CreatedAt, UpdatedAt);
+        DueDate, Notes, CreatedAt, UpdatedAt, QuoteId);
 }
 
 file record OrderBomLineRow

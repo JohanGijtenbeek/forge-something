@@ -99,6 +99,31 @@
     },
 
     // ============================================================
+    // NGROK
+    // ============================================================
+    {
+      "label": "Dev: expose via ngrok",
+      "dependsOn": ["Ngrok: start tunnel", "Ngrok: open dashboard"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Ngrok: start tunnel",
+      "type": "shell",
+      "command": "ngrok http 5173 --log=stdout",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    },
+    {
+      "label": "Ngrok: print url",
+      "type": "shell",
+      "command": "Start-Sleep 3; $url = (Invoke-RestMethod http://localhost:4040/api/tunnels).tunnels[0].public_url; Write-Host \"`nNgrok URL: $url`n\" -ForegroundColor Cyan; Start-Process $url",
+      "options": { "shell": { "executable": "powershell", "args": ["-Command"] } },
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    },
+
+    // ============================================================
     // K6
     // ============================================================
     {

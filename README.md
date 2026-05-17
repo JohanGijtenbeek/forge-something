@@ -154,6 +154,26 @@ GET    /api/operation-types
 GET    /api/machine-types
 ```
 
+### Quotes
+
+```
+GET    /api/quotes?page&pageSize&search&status
+GET    /api/quotes/{id}
+GET    /api/quotes/{id}/history
+POST   /api/quotes
+PUT    /api/quotes/{id}
+PUT    /api/quotes/{id}/status
+DELETE /api/quotes/{id}
+
+POST   /api/quotes/{id}/lines
+PUT    /api/quotes/{id}/lines/{lineId}
+DELETE /api/quotes/{id}/lines/{lineId}
+PUT    /api/quotes/{id}/lines/{lineId}/accept
+POST   /api/quotes/{id}/convert
+```
+
+> **Note:** Quote lines link to articles via an optional FK. Converting a quote to production orders requires all accepted lines to have an article linked. This is a bare-bones constraint to be evaluated — see `docs/legacy-system-analysis.md`.
+
 ### Orders
 
 ```

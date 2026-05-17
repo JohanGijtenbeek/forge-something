@@ -264,6 +264,7 @@ export interface OrderDetailResponse {
   status: OrderStatus;
   dueDate: string | null;
   notes: string | null;
+  quoteId: string | null;
   createdAt: string;
   updatedAt: string;
   bomLines: OrderBomLineResponse[];
@@ -311,6 +312,135 @@ export interface CreateOrderRequest {
 export interface UpdateOrderStatusRequest {
   status: string;
 }
+
+// ── Quotes ────────────────────────────────────────────────────────────────
+
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
+
+export interface QuoteSummaryResponse {
+  id: string;
+  quoteNumber: number;
+  customerName: string | null;
+  date: string;
+  status: QuoteStatus;
+  lineCount: number;
+  createdAt: string;
+}
+
+export interface QuoteDetailResponse {
+  id: string;
+  quoteNumber: number;
+  customerId: string | null;
+  customerName: string | null;
+  date: string;
+  reference: string | null;
+  contactPerson: string | null;
+  deliveryTime: string | null;
+  hourlyRate: number;
+  materialMargin: number;
+  standardMargin: number;
+  setupTime: number;
+  status: QuoteStatus;
+  remarks: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lines: QuoteLineResponse[];
+}
+
+export interface QuoteLineResponse {
+  id: string;
+  sortOrder: number;
+  partName: string;
+  partNumber: string;
+  quantity: number;
+  articleId: string | null;
+  materialType: string | null;
+  materialCode: string | null;
+  materialCode2: string | null;
+  materialGeometry: string | null;
+  materialSizeMm: number | null;
+  materialLengthMm: number | null;
+  materialQuantity: number | null;
+  materialPrice: number | null;
+  materialSource: string;
+  operationCount: number;
+  operationTimeMinutes: number;
+  subcontractingCount: number;
+  subcontractingPrice: number;
+  totalPricePerUnit: number | null;
+  isManualPrice: boolean;
+  manualPrice: number | null;
+  isAccepted: boolean;
+  remarks: string | null;
+}
+
+export interface QuoteHistoryEntry {
+  id: number;
+  eventType: string;
+  summary: string;
+  changedBy: string;
+  changedAt: string;
+}
+
+export interface ConvertQuoteResponse {
+  quoteId: string;
+  createdOrderIds: string[];
+}
+
+export interface CreateQuoteRequest {
+  customerId: string | null;
+  date: string;
+  reference: string | null;
+  contactPerson: string | null;
+  deliveryTime: string | null;
+  hourlyRate: number;
+  materialMargin: number;
+  standardMargin: number;
+  setupTime: number;
+}
+
+export interface UpdateQuoteHeaderRequest {
+  customerId: string | null;
+  date: string;
+  reference: string | null;
+  contactPerson: string | null;
+  deliveryTime: string | null;
+  hourlyRate: number;
+  materialMargin: number;
+  standardMargin: number;
+  setupTime: number;
+  remarks: string | null;
+}
+
+export interface UpdateQuoteStatusRequest {
+  status: string;
+}
+
+export interface AddQuoteLineRequest {
+  sortOrder: number;
+  partName: string;
+  partNumber: string;
+  quantity: number;
+  articleId: string | null;
+  materialType: string | null;
+  materialCode: string | null;
+  materialCode2: string | null;
+  materialGeometry: string | null;
+  materialSizeMm: number | null;
+  materialLengthMm: number | null;
+  materialQuantity: number | null;
+  materialPrice: number | null;
+  materialSource: string;
+  operationCount: number;
+  operationTimeMinutes: number;
+  subcontractingCount: number;
+  subcontractingPrice: number;
+  isManualPrice: boolean;
+  manualPrice: number | null;
+  remarks: string | null;
+}
+
+export interface UpdateQuoteLineRequest extends AddQuoteLineRequest {}
 
 // ── Parties ────────────────────────────────────────────────────────────────
 

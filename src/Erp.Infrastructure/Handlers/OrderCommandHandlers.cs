@@ -56,7 +56,7 @@ public class CreateProductionOrderHandler : IRequestHandler<CreateProductionOrde
         var order = new ProductionOrder(
             orderNumber, article.Id, article.Code, article.Name, article.Revision,
             command.CustomerId, customerName, command.Quantity, uom,
-            command.DueDate, command.Notes);
+            command.DueDate, command.Notes, command.QuoteId);
 
         var orderBom = bom.Select(b => new OrderBomLine(
             order.Id, b.ChildArticleId, b.ChildCode, b.ChildName,
